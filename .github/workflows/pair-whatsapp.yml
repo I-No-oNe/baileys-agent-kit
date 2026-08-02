@@ -1,0 +1,36 @@
+name: Pair WhatsApp
+
+on:
+  workflow_dispatch:
+    inputs:
+      account_id:
+        description: Account namespace
+        required: true
+        default: default
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pair-whatsapp-${{ inputs.account_id }}
+  cancel-in-progress: true
+
+jobs:
+  pair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Create private pairing screen
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          PAIRING_BROKER_URL: ${{ secrets.PAIRING_BROKER_URL }}
+          PAIRING_BROKER_SECRET: ${{ secrets.PAIRING_BROKER_SECRET }}
+          WA_ACCOUNT_ID: ${{ inputs.account_id }}
+        run: npm run wa:pair

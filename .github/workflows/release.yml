@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+
+      - if: steps.release.outputs.release_created == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.release.outputs.release_created == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - if: steps.release.outputs.release_created == 'true'
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - if: steps.release.outputs.release_created == 'true'
+        run: npm test && npm run check && npm run build
+
+      - name: Publish package when NPM_TOKEN is configured
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN is not configured; GitHub Release created without npm publication."
+            exit 0
+          fi
+          npm publish --access public --provenance

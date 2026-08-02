@@ -1,0 +1,46 @@
+name: Check WhatsApp Compatibility
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - id: compatibility
+        continue-on-error: true
+        run: npm run wa:compat
+      - name: Report protocol drift
+        if: steps.compatibility.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = "Baileys protocol update required";
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+            });
+            const existing = issues.find((issue) => issue.title === title && !issue.pull_request);
+            const body = `The scheduled compatibility check failed in [run ${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}). Dependabot checks Baileys daily; review its update PR and the failing protocol versions before merging.`;
+            if (existing) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
+            }
+      - name: Fail on protocol drift
+        if: steps.compatibility.outcome == 'failure'
+        run: exit 1

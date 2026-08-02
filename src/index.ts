@@ -1,0 +1,9 @@
+export { actionSchema, llmTool, type AgentAction } from "./actions";
+export { connectWhatsApp } from "./client";
+export { executeAction } from "./execute";
+export { toJid } from "./jid";
+export { RiskGuard, riskConfigFromEnv, type RiskConfig } from "./risk-guard";
+export { runAgentAction } from "./runner";
+export { pairWhatsApp, pairingBrokerFromEnv, type PairWhatsAppOptions, type PairingBroker } from "./pair";
+export { diagnoseWhatsApp, type DoctorResult } from "./doctor";
+export { agentDescription } from "./agent-description";

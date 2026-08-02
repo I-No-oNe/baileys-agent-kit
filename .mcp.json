@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "baileys-agent-kit": {
+      "command": "node",
+      "args": ["--import", "tsx", "src/mcp.ts"]
+    }
+  }
+}

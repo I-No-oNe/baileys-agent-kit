@@ -1,0 +1,48 @@
+name: WhatsApp Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      account_id:
+        description: Account namespace
+        required: true
+        default: default
+      action_json:
+        description: One Baileys Agent Kit action as JSON
+        required: true
+  repository_dispatch:
+    types: [whatsapp-action]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatsapp-${{ inputs.account_id || github.event.client_payload.account_id || 'default' }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Run WhatsApp action
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          WA_ACCOUNT_ID: ${{ inputs.account_id || github.event.client_payload.account_id || 'default' }}
+          ACTION_JSON: ${{ inputs.action_json || toJson(github.event.client_payload.action) }}
+          WA_ALLOWED_RECIPIENTS: ${{ secrets.WA_ALLOWED_RECIPIENTS }}
+          WA_MAX_SENDS_PER_DAY: ${{ vars.WA_MAX_SENDS_PER_DAY || '50' }}
+          WA_MAX_SENDS_PER_RECIPIENT_PER_DAY: ${{ vars.WA_MAX_SENDS_PER_RECIPIENT_PER_DAY || '10' }}
+          WA_MAX_UNIQUE_RECIPIENTS_PER_DAY: ${{ vars.WA_MAX_UNIQUE_RECIPIENTS_PER_DAY || '20' }}
+          WA_MINIMUM_SEND_INTERVAL_MS: ${{ vars.WA_MINIMUM_SEND_INTERVAL_MS || '3500' }}
+          WA_FAILURE_THRESHOLD: ${{ vars.WA_FAILURE_THRESHOLD || '3' }}
+          WA_CIRCUIT_BREAKER_SECONDS: ${{ vars.WA_CIRCUIT_BREAKER_SECONDS || '1800' }}
+          WA_ENABLE_GROUP_ADMIN: ${{ vars.WA_ENABLE_GROUP_ADMIN || 'false' }}
+        run: npm run wa:run

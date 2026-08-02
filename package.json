@@ -1,0 +1,73 @@
+{
+  "name": "baileys-agent-kit",
+  "version": "0.1.0",
+  "description": "LLM-friendly WhatsApp automation on Baileys and GitHub Actions",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/I-No-oNe/baileys-agent-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/I-No-oNe/baileys-agent-kit/issues"
+  },
+  "homepage": "https://github.com/I-No-oNe/baileys-agent-kit#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "baileys-agent": "./dist/cli.js",
+    "baileys-agent-mcp": "./dist/mcp.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/cli.ts src/mcp.ts --tsconfig tsconfig.lib.json --format esm --dts --clean && next build",
+    "check": "tsc --noEmit",
+    "dev": "node scripts/next-port.mjs dev",
+    "start": "node scripts/next-port.mjs start",
+    "test": "tsx --test src/**/*.test.ts",
+    "wa:pair": "tsx scripts/pair.ts",
+    "wa:run": "tsx scripts/run-action.ts",
+    "wa:compat": "tsx scripts/check-compatibility.ts",
+    "agent:describe": "tsx src/cli.ts describe",
+    "mcp": "tsx src/mcp.ts",
+    "test:mcp": "tsx scripts/check-mcp.ts",
+    "prepublishOnly": "npm test && npm run check && tsup src/index.ts src/cli.ts src/mcp.ts --tsconfig tsconfig.lib.json --format esm --dts --clean && npm run test:mcp"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@upstash/redis": "^1.38.0",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "next": "^16.2.12",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.2",
+    "typescript": "^5.9.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.25",
+    "sharp": "^0.35.3"
+  }
+}

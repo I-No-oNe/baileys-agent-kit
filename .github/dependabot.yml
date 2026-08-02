@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+      time: "03:17"
+      timezone: Asia/Jerusalem
+    open-pull-requests-limit: 10
+    groups:
+      baileys-protocol:
+        patterns:
+          - "@whiskeysockets/baileys"
+      runtime-libraries:
+        dependency-type: production
+        exclude-patterns:
+          - "@whiskeysockets/baileys"
+        update-types:
+          - patch
+          - minor
+      development-tools:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:43"
+      timezone: Asia/Jerusalem
