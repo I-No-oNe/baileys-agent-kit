@@ -4,11 +4,29 @@ An LLM-friendly TypeScript layer over Baileys that runs WhatsApp work in GitHub 
 
 > Baileys is an unofficial WhatsApp Web client. It can break when WhatsApp changes its protocol and may put an account at risk. Do not use a valuable business number without accepting that risk.
 
-## Install
+## Install and download
+
+Requires Node.js 20 or newer. Install the library in a project:
 
 ```bash
 npm install baileys-agent-kit
 ```
+
+Run the CLI without installing it globally:
+
+```bash
+npx --yes --package baileys-agent-kit baileys-agent doctor
+```
+
+Or install the two CLI commands globally:
+
+```bash
+npm install --global baileys-agent-kit
+baileys-agent doctor
+baileys-agent-mcp
+```
+
+GitHub provides source archives on the [Releases page](https://github.com/I-No-oNe/baileys-agent-kit/releases). This TypeScript package does not ship standalone desktop executables.
 
 ## Runtime design
 

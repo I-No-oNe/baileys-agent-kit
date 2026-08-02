@@ -17,6 +17,45 @@ jobs:
       - id: release
         uses: googleapis/release-please-action@v5
 
+      - name: Add installation instructions to the GitHub Release
+        if: steps.release.outputs.release_created == 'true'
+        uses: actions/github-script@v9
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: process.env.RELEASE_TAG,
+            });
+            const marker = "## Install";
+            if (!(release.body || "").includes(marker)) {
+              const install = [
+                marker,
+                "",
+                "Requires Node.js 20 or newer.",
+                "",
+                "```bash",
+                "npm install baileys-agent-kit",
+                "```",
+                "",
+                "Run the CLI without a global install:",
+                "",
+                "```bash",
+                "npx --yes --package baileys-agent-kit baileys-agent doctor",
+                "```",
+                "",
+                "GitHub source archives are attached below.",
+              ].join("\n");
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                body: [release.body?.trim(), install].filter(Boolean).join("\n\n"),
+              });
+            }
+
       - if: steps.release.outputs.release_created == 'true'
         uses: actions/checkout@v7
 
