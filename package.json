@@ -64,7 +64,7 @@
     "@types/react-dom": "^19.0.0",
     "tsup": "^8.5.1",
     "tsx": "^4.23.2",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "postcss": "^8.5.25",
