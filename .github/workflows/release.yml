@@ -5,6 +5,7 @@ on:
     branches: [main]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -54,3 +55,10 @@ jobs:
                 body: [release.body?.trim(), install].filter(Boolean).join("\n\n"),
               });
             }
+
+      - name: Trigger npm publication
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run publish-npm.yml --ref main -f tag="$RELEASE_TAG"
