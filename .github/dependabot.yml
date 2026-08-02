@@ -7,6 +7,12 @@ updates:
       time: "03:17"
       timezone: Asia/Jerusalem
     open-pull-requests-limit: 10
+    ignore:
+      # Match the Node.js version used by CI and the supported TypeScript line.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       baileys-protocol:
         patterns:

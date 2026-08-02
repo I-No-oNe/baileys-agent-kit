@@ -142,7 +142,21 @@ The defaults can be changed with the matching repository variables listed in [.e
 - Non-major Dependabot updates request auto-merge. Enable repository auto-merge and require the `CI / validate` check on `main`; otherwise GitHub safely leaves the PR open.
 - A failed scheduled protocol check opens or updates one GitHub issue instead of failing silently.
 - Release Please maintains versions, changelog entries, tags, and GitHub Releases from conventional commits on `main`.
-- Add the `NPM_TOKEN` repository secret to publish releases to npm. Without it, GitHub Releases still work and npm publication is skipped.
+- Major TypeScript and Node type updates stay pinned until the repository deliberately changes its compiler or Node runtime.
+
+### Publish version 0.1 to npm
+
+The package name is `baileys-agent-kit`. Its first npm publication needs authorization from an npm account; a GitHub Release alone cannot create the npm package.
+
+1. Run `npm login --auth-type=web` and finish sign-in in npm's browser page.
+2. Run `npm publish --access public --otp=123456`, replacing `123456` with a fresh npm authenticator code.
+3. Verify the result with `npm view baileys-agent-kit version` or install it with `npm install baileys-agent-kit`.
+
+For token-based GitHub publication, create a granular npm token with package read/write permission and **Bypass 2FA** enabled, then add it as the GitHub Actions repository secret `NPM_TOKEN`. Never commit or paste that token into an issue.
+
+After the first publication, npm Trusted Publishing can replace the long-lived token: configure this GitHub repository and `.github/workflows/publish-npm.yml` as the package's trusted publisher on npm, then delete `NPM_TOKEN`. Open **Actions → Publish to npm → Run workflow** for manual publication. The workflow already grants the required OIDC permission and publishes provenance.
+
+Future Release Please releases use the release workflow's `NPM_TOKEN` publication step. The dedicated publisher also runs for releases published outside Release Please and can be dispatched manually for an existing tag.
 
 Runtime package installation is deliberately forbidden. Updating only through lockfile-backed, tested pull requests prevents a compromised or broken registry release from silently replacing production code.
 

@@ -19,8 +19,8 @@
     "dist"
   ],
   "bin": {
-    "baileys-agent": "./dist/cli.js",
-    "baileys-agent-mcp": "./dist/mcp.js"
+    "baileys-agent": "dist/cli.js",
+    "baileys-agent-mcp": "dist/mcp.js"
   },
   "exports": {
     ".": {
