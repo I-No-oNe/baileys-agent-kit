@@ -25,7 +25,7 @@ jobs:
         run: npm run wa:compat
       - name: Report protocol drift
         if: steps.compatibility.outcome == 'failure'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = "Baileys protocol update required";
