@@ -10,12 +10,14 @@ import { agentDescription } from "./agent-description";
 import { diagnoseWhatsApp } from "./doctor";
 import { explainError, type ExplainedFailure } from "./explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "./pair";
+import { PAIRING_QR_TTL_MS } from "./pairing/constants";
 import { runAgentAction } from "./runner";
 import packageJson from "../package.json";
 
 type PairingState = {
   status: "waiting" | "qr" | "connected" | "failed";
   qr?: string;
+  qrExpiresAt?: number;
   shareUrl?: string;
   error?: string;
   failure?: ExplainedFailure;
@@ -48,12 +50,14 @@ async function startPairing(accountId: string) {
       onQr: (qr) => {
         state.status = "qr";
         state.qr = qr;
+        state.qrExpiresAt = Date.now() + PAIRING_QR_TTL_MS;
         state.notify();
       },
     });
     void pairing.then(() => {
       state.status = "connected";
       state.qr = undefined;
+      state.qrExpiresAt = undefined;
       state.notify();
     }).catch((error) => {
       state.status = "failed";
@@ -80,16 +84,20 @@ async function pairingResult(accountId: string, state: PairingState | undefined)
     const failure = explainError(new Error(`No pairing session exists for account '${accountId}'.`));
     return { content: [{ type: "text", text: JSON.stringify(failure, null, 2) }], isError: true };
   }
+  const qr = state.qr;
+  const qrExpiresAt = state.qrExpiresAt;
+  const qrCurrent = qr !== undefined && qrExpiresAt !== undefined && qrExpiresAt > Date.now();
   const summary = {
     accountId,
-    status: state.status,
+    status: state.status === "qr" && !qrCurrent ? "waiting" : state.status,
+    qrExpiresAt: qrCurrent ? new Date(qrExpiresAt).toISOString() : undefined,
     shareUrl: state.shareUrl,
     error: state.error,
     failure: state.failure,
   };
   const content: CallToolResult["content"] = [{ type: "text", text: JSON.stringify(summary, null, 2) }];
-  if (state.qr && state.status === "qr") {
-    const png = await QRCode.toBuffer(state.qr, { type: "png", width: 640, margin: 3 });
+  if (qrCurrent) {
+    const png = await QRCode.toBuffer(qr, { type: "png", width: 640, margin: 3 });
     content.push({ type: "image", data: png.toString("base64"), mimeType: "image/png" });
   }
   return { content, isError: state.status === "failed" };

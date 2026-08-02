@@ -1,6 +1,7 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import { createUpstashAuthState } from "./auth/upstash";
 import { createCoalescedSaver } from "./coalesced-saver";
+import { PAIRING_QR_TTL_MS } from "./pairing/constants";
 
 export type PairingBroker = { url: string; secret: string };
 export type PairWhatsAppOptions = {
@@ -56,7 +57,7 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
       timeout = setTimeout(() => finish(new Error("WhatsApp pairing timed out.")), options.timeoutMs ?? 10 * 60_000);
 
       const connect = () => {
-        socket = makeWASocket({ auth: state, version, markOnlineOnConnect: false, syncFullHistory: false });
+        socket = makeWASocket({ auth: state, version, markOnlineOnConnect: false, syncFullHistory: false, qrTimeout: PAIRING_QR_TTL_MS });
         socket.ev.on("creds.update", credentialSaver.schedule);
         socket.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
           if (finished) return;

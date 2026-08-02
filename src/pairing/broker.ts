@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { Redis } from "@upstash/redis";
 import QRCode from "qrcode";
 import { requiredEnv } from "../env";
+import { PAIRING_QR_TTL_MS } from "./constants";
 
 const SESSION_TTL_SECONDS = 10 * 60;
 const key = (id: string) => `baileys_agent:pairing:${id}`;
@@ -11,6 +12,8 @@ type PairingSession = {
   tokenHash: string;
   status: "waiting" | "qr" | "connected" | "failed";
   qrDataUrl?: string;
+  qrUpdatedAt?: number;
+  qrExpiresAt?: number;
   message?: string;
   expiresAt: number;
 };
@@ -50,11 +53,17 @@ export async function updatePairingSession(id: string, update: { qr?: string; st
 
   if (update.qr) {
     session.qrDataUrl = await QRCode.toDataURL(update.qr, { width: 640, margin: 3 });
+    session.qrUpdatedAt = Date.now();
+    session.qrExpiresAt = session.qrUpdatedAt + PAIRING_QR_TTL_MS;
     session.status = "qr";
   }
   if (update.status) session.status = update.status;
   if (update.message) session.message = update.message;
-  if (update.status === "connected") delete session.qrDataUrl;
+  if (update.status === "connected") {
+    delete session.qrDataUrl;
+    delete session.qrUpdatedAt;
+    delete session.qrExpiresAt;
+  }
 
   const remainingSeconds = Math.max(1, Math.ceil((session.expiresAt - Date.now()) / 1000));
   await store.set(key(id), session, { ex: remainingSeconds });
@@ -66,9 +75,11 @@ export async function viewPairingSession(id: string, token: string) {
   const expected = Buffer.from(session.tokenHash, "hex");
   const actual = Buffer.from(tokenHash(token), "hex");
   if (!timingSafeEqual(actual, expected)) return null;
+  const qrExpired = session.qrExpiresAt !== undefined && session.qrExpiresAt <= Date.now();
   return {
-    status: session.status,
-    qrDataUrl: session.qrDataUrl,
+    status: qrExpired ? "waiting" : session.status,
+    qrDataUrl: qrExpired ? undefined : session.qrDataUrl,
+    qrUpdatedAt: qrExpired ? undefined : session.qrUpdatedAt,
     message: session.message,
     expiresAt: session.expiresAt,
   };

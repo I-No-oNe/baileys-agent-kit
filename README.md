@@ -88,7 +88,7 @@ The `baileys-agent-mcp` stdio server exposes five tools:
 - `whatsapp_pair_status`
 - `whatsapp_execute`
 
-Pairing tools return the QR as an MCP `image/png` content block, so compatible apps can display it directly. The MCP process remains alive while the phone scans the QR.
+Pairing tools return the current QR as an MCP `image/png` content block, plus its expiry time. Compatible apps can display it directly and request status again after expiry. The MCP process remains alive while the phone scans the QR.
 
 This repository includes a project-scoped [.mcp.json](.mcp.json). After publishing, a generic MCP client configuration is:
 
@@ -210,7 +210,7 @@ npm run build
 ## Security notes
 
 - The pairing URL is a bearer secret. It uses a URL fragment so the viewer token is not sent in the initial browser request or ordinary Vercel access logs.
-- Pairing state expires after 10 minutes. The QR is cleared after connection.
+- Pairing state expires after 10 minutes. QR codes refresh every 20 seconds and are cleared after connection.
 - GitHub and Vercel share only the pairing broker secret; the browser never receives it.
 - The Action serializes work per `WA_ACCOUNT_ID` to avoid concurrent corruption and duplicate operations.
 - Give any LLM a narrow allowlist of recipients and actions in the calling application. This kit validates shape and limits, but it cannot decide who the model is authorized to message.

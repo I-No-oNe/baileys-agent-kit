@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 type PairingState = {
   status: "loading" | "waiting" | "qr" | "connected" | "failed" | "expired";
   qrDataUrl?: string;
+  qrUpdatedAt?: number;
   message?: string;
 };
 
@@ -71,7 +72,7 @@ export function PairingView({ id }: { id: string }) {
           <p className="privacy">This private link expires in 10 minutes. The QR is never stored permanently.</p>
         </div>
         <div className="qrPanel">
-          {state.qrDataUrl ? <img src={state.qrDataUrl} alt="WhatsApp pairing QR code" /> : <div className="qrPlaceholder"><span className="spinner" /><p>{state.message ?? (state.status === "expired" ? "Link expired" : "Preparing secure QR…")}</p></div>}
+          {state.qrDataUrl ? <img key={state.qrUpdatedAt} src={state.qrDataUrl} alt="WhatsApp pairing QR code" /> : <div className="qrPlaceholder"><span className="spinner" /><p>{state.message ?? (state.status === "expired" ? "Link expired" : state.status === "waiting" ? "Refreshing QR…" : "Preparing secure QR…")}</p></div>}
           <span className={`status ${state.status}`}>{state.status === "qr" ? "Ready to scan" : state.status}</span>
         </div>
       </section>
