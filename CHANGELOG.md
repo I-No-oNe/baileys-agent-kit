@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.2...v0.1.3) (2026-08-02)
+
+
+### Bug Fixes
+
+* refresh expired pairing QR codes ([41d7fcd](https://github.com/I-No-oNe/baileys-agent-kit/commit/41d7fcdcf28ec8682761f2ad852fd8963617b800))
+
 ## [0.1.2](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.1...v0.1.2) (2026-08-02)
 
 
