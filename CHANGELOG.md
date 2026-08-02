@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.3...v0.1.4) (2026-08-02)
+
+
+### Bug Fixes
+
+* allow empty send limits ([07c0d9b](https://github.com/I-No-oNe/baileys-agent-kit/commit/07c0d9b8aeafda754f866c75602f4375cdf92636))
+
 ## [0.1.3](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.2...v0.1.3) (2026-08-02)
 
 
