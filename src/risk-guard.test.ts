@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Redis } from "@upstash/redis";
-import { RiskGuard, type RiskConfig } from "./risk-guard";
+import { RiskGuard, riskConfigFromEnv, type RiskConfig } from "./risk-guard";
 
 function memoryStore() {
   const values = new Map<string, unknown>();
@@ -54,6 +54,30 @@ const config: RiskConfig = {
   allowedRecipients: new Set(),
   groupAdminEnabled: false,
 };
+
+test("treats empty or whitespace send-limit environment values as unlimited", () => {
+  const names = [
+    "WA_MAX_SENDS_PER_DAY",
+    "WA_MAX_SENDS_PER_RECIPIENT_PER_DAY",
+    "WA_MAX_UNIQUE_RECIPIENTS_PER_DAY",
+    "WA_MINIMUM_SEND_INTERVAL_MS",
+  ] as const;
+  const previous = new Map(names.map((name) => [name, process.env[name]]));
+
+  try {
+    names.forEach((name, index) => { process.env[name] = index % 2 ? "   " : ""; });
+    const parsed = riskConfigFromEnv();
+    assert.equal(parsed.maxSendsPerDay, Infinity);
+    assert.equal(parsed.maxSendsPerRecipientPerDay, Infinity);
+    assert.equal(parsed.maxUniqueRecipientsPerDay, Infinity);
+    assert.equal(parsed.minimumSendIntervalMs, 0);
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
 
 test("limits repeated sends to a recipient", async () => {
   const guard = new RiskGuard(memoryStore(), "default", config);

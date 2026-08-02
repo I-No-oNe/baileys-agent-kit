@@ -176,6 +176,8 @@ These controls reduce accidental spam and repeated failing connections. They can
 
 The defaults can be changed with the matching repository variables listed in [.env.example](.env.example). Keep the limits conservative and use opt-in recipients. The library exports `RiskGuard` for callers outside the included Action runner.
 
+Leave a `WA_MAX_*` environment value empty or whitespace-only to disable that limit. An empty or whitespace-only `WA_MINIMUM_SEND_INTERVAL_MS` disables the send delay. Unset values continue to use the defaults above.
+
 ## Updates and releases
 
 - Dependabot checks Baileys and other npm dependencies daily and Actions weekly.

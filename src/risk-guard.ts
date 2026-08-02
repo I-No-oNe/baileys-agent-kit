@@ -26,9 +26,10 @@ export type RiskConfig = {
   groupAdminEnabled: boolean;
 };
 
-function integerEnv(name: string, fallback: number, minimum: number, maximum: number) {
+function integerEnv(name: string, fallback: number, minimum: number, maximum: number, emptyValue = fallback) {
   const raw = process.env[name];
-  if (!raw) return fallback;
+  if (raw === undefined) return fallback;
+  if (!raw.trim()) return emptyValue;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < minimum || value > maximum) {
     throw new Error(`${name} must be an integer from ${minimum} to ${maximum}.`);
@@ -45,10 +46,10 @@ export function riskConfigFromEnv(): RiskConfig {
       .map(toJid),
   );
   return {
-    maxSendsPerDay: integerEnv("WA_MAX_SENDS_PER_DAY", 50, 1, 10_000),
-    maxSendsPerRecipientPerDay: integerEnv("WA_MAX_SENDS_PER_RECIPIENT_PER_DAY", 10, 1, 1_000),
-    maxUniqueRecipientsPerDay: integerEnv("WA_MAX_UNIQUE_RECIPIENTS_PER_DAY", 20, 1, 1_000),
-    minimumSendIntervalMs: integerEnv("WA_MINIMUM_SEND_INTERVAL_MS", 3_500, 0, 60_000),
+    maxSendsPerDay: integerEnv("WA_MAX_SENDS_PER_DAY", 50, 1, 10_000, Infinity),
+    maxSendsPerRecipientPerDay: integerEnv("WA_MAX_SENDS_PER_RECIPIENT_PER_DAY", 10, 1, 1_000, Infinity),
+    maxUniqueRecipientsPerDay: integerEnv("WA_MAX_UNIQUE_RECIPIENTS_PER_DAY", 20, 1, 1_000, Infinity),
+    minimumSendIntervalMs: integerEnv("WA_MINIMUM_SEND_INTERVAL_MS", 3_500, 0, 60_000, 0),
     failureThreshold: integerEnv("WA_FAILURE_THRESHOLD", 3, 1, 20),
     circuitBreakerSeconds: integerEnv("WA_CIRCUIT_BREAKER_SECONDS", 30 * 60, 60, 24 * 60 * 60),
     allowedRecipients,
