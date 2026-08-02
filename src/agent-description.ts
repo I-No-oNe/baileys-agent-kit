@@ -18,5 +18,9 @@ export const agentDescription = {
     destructiveGroupActionsRequireOptIn: true,
     riskControlsAppliedByRun: true,
   },
+  failureContract: {
+    fields: ["ok", "error", "code", "likelyCause", "nextSteps", "retryable", "details"],
+    instruction: "Explain likelyCause to the user, follow nextSteps in order, and never retry automatically when retryable is false.",
+  },
   actionTool: llmTool,
 } as const;

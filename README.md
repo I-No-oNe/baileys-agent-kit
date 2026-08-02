@@ -105,6 +105,23 @@ This repository includes a project-scoped [.mcp.json](.mcp.json). After publishi
 
 Pass the Upstash and safety environment variables through the agent app’s MCP configuration or launch environment. Never embed their values in a committed configuration file.
 
+## Agent-readable failures
+
+CLI, GitHub Actions, and MCP failures use the same JSON contract:
+
+```json
+{
+  "ok": false,
+  "error": "WhatsApp is not connected to this account.",
+  "code": "WHATSAPP_NOT_PAIRED",
+  "likelyCause": "No usable linked-device session exists, or WhatsApp logged the session out.",
+  "nextSteps": ["Run 'baileys-agent pair --terminal' or call whatsapp_pair_start."],
+  "retryable": false
+}
+```
+
+Agents should explain `likelyCause` in plain language, follow `nextSteps` in order, and never retry automatically when `retryable` is `false`. Technical details are retained when useful, with common credential formats redacted. `baileys-agent doctor` and `whatsapp_doctor` return the same guidance for every detected configuration, session, storage, or protocol problem.
+
 ## Setup
 
 1. Create an Upstash Redis database. It stores Baileys credentials and signal keys. Treat its REST token as an account credential.

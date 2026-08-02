@@ -1,4 +1,5 @@
 import { appendFile } from "node:fs/promises";
+import { explainError } from "../src/explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "../src/pair";
 
 async function main() {
@@ -15,6 +16,6 @@ async function main() {
 }
 
 main().catch(async (error) => {
-  console.error(error);
+  console.error(JSON.stringify(explainError(error)));
   process.exitCode = 1;
 });

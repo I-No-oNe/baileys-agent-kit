@@ -1,6 +1,7 @@
 import { Redis } from "@upstash/redis";
 import { DEFAULT_CONNECTION_CONFIG, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import { createUpstashAuthState } from "./auth/upstash";
+import { explainError, type ExplainedFailure } from "./explain-error";
 
 export type DoctorResult = {
   ok: boolean;
@@ -14,6 +15,7 @@ export type DoctorResult = {
     protocolCurrent: boolean | null;
   };
   problems: string[];
+  guidance: ExplainedFailure[];
 };
 
 export async function diagnoseWhatsApp(accountId = process.env.WA_ACCOUNT_ID ?? "default"): Promise<DoctorResult> {
@@ -68,5 +70,6 @@ export async function diagnoseWhatsApp(accountId = process.env.WA_ACCOUNT_ID ?? 
     redis: redisStatus,
     whatsapp: { paired, bundledProtocol, currentProtocol, protocolCurrent },
     problems,
+    guidance: problems.map((problem) => explainError(new Error(problem))),
   };
 }

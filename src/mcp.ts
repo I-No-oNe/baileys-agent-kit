@@ -8,6 +8,7 @@ import { z } from "zod";
 import { actionSchema } from "./actions";
 import { agentDescription } from "./agent-description";
 import { diagnoseWhatsApp } from "./doctor";
+import { explainError, type ExplainedFailure } from "./explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "./pair";
 import { runAgentAction } from "./runner";
 import packageJson from "../package.json";
@@ -17,6 +18,7 @@ type PairingState = {
   qr?: string;
   shareUrl?: string;
   error?: string;
+  failure?: ExplainedFailure;
   changed: Promise<void>;
   notify: () => void;
 };
@@ -55,12 +57,14 @@ async function startPairing(accountId: string) {
       state.notify();
     }).catch((error) => {
       state.status = "failed";
-      state.error = error instanceof Error ? error.message : String(error);
+      state.failure = explainError(error);
+      state.error = state.failure.error;
       state.notify();
     });
   } catch (error) {
     state.status = "failed";
-    state.error = error instanceof Error ? error.message : String(error);
+    state.failure = explainError(error);
+    state.error = state.failure.error;
     state.notify();
   }
 
@@ -73,13 +77,15 @@ async function startPairing(accountId: string) {
 
 async function pairingResult(accountId: string, state: PairingState | undefined): Promise<CallToolResult> {
   if (!state) {
-    return { content: [{ type: "text", text: `No pairing session exists for account '${accountId}'. Call whatsapp_pair_start first.` }], isError: true };
+    const failure = explainError(new Error(`No pairing session exists for account '${accountId}'.`));
+    return { content: [{ type: "text", text: JSON.stringify(failure, null, 2) }], isError: true };
   }
   const summary = {
     accountId,
     status: state.status,
     shareUrl: state.shareUrl,
     error: state.error,
+    failure: state.failure,
   };
   const content: CallToolResult["content"] = [{ type: "text", text: JSON.stringify(summary, null, 2) }];
   if (state.qr && state.status === "qr") {
@@ -126,8 +132,9 @@ server.registerTool("whatsapp_execute", {
     const result = await runAgentAction(action);
     return { content: [{ type: "text", text: JSON.stringify({ ok: true, result }, null, 2) }] };
   } catch (error) {
+    const failure = explainError(error);
     return {
-      content: [{ type: "text", text: JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }) }],
+      content: [{ type: "text", text: JSON.stringify(failure, null, 2) }],
       isError: true,
     };
   }

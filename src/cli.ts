@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import QRCode from "qrcode";
 import qrcodeTerminal from "qrcode-terminal";
-import { ZodError } from "zod";
 import { agentDescription } from "./agent-description";
 import { diagnoseWhatsApp } from "./doctor";
+import { explainError } from "./explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "./pair";
 import { runAgentAction } from "./runner";
 
@@ -94,8 +94,6 @@ Use 'baileys-agent describe' for the complete machine-readable action schema.`);
 }
 
 run().catch((error) => {
-  console.error(JSON.stringify(error instanceof ZodError
-    ? { ok: false, error: "Invalid action input.", issues: error.issues }
-    : { ok: false, error: error instanceof Error ? error.message : String(error) }));
+  console.error(JSON.stringify(explainError(error)));
   process.exit(1);
 });

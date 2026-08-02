@@ -30,7 +30,22 @@ try {
   ));
   assert.ok(text);
   assert.equal(JSON.parse(text.text).actionTool.name, "whatsapp");
-  console.log("MCP tools and capability discovery valid.");
+
+  const missingPairing = await client.callTool({
+    name: "whatsapp_pair_status",
+    arguments: { accountId: "mcp-contract-check" },
+  });
+  const failureContent = (missingPairing as { content?: unknown }).content;
+  assert.ok(Array.isArray(failureContent));
+  const failureText = failureContent.find((item): item is { type: "text"; text: string } => (
+    typeof item === "object" && item !== null && "type" in item && item.type === "text" && "text" in item && typeof item.text === "string"
+  ));
+  assert.ok(failureText);
+  const failure = JSON.parse(failureText.text);
+  assert.equal(failure.code, "PAIRING_NOT_STARTED");
+  assert.equal(failure.retryable, false);
+  assert.ok(Array.isArray(failure.nextSteps));
+  console.log("MCP tools, capability discovery, and failure guidance valid.");
 } finally {
   await client.close();
 }

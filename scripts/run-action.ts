@@ -1,5 +1,6 @@
 import { requiredEnv } from "../src/env";
 import { runAgentAction } from "../src/runner";
+import { explainError } from "../src/explain-error";
 
 async function main() {
   const result = await runAgentAction(JSON.parse(requiredEnv("ACTION_JSON")));
@@ -7,6 +8,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+  console.error(JSON.stringify(explainError(error)));
   process.exit(1);
 });

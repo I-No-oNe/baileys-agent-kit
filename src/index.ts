@@ -1,6 +1,7 @@
 export { actionSchema, llmTool, type AgentAction } from "./actions";
 export { connectWhatsApp } from "./client";
 export { executeAction } from "./execute";
+export { explainError, type ExplainedFailure } from "./explain-error";
 export { toJid } from "./jid";
 export { RiskGuard, riskConfigFromEnv, type RiskConfig } from "./risk-guard";
 export { runAgentAction } from "./runner";
