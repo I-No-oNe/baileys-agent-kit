@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type PairingState = {
-  status: "loading" | "waiting" | "qr" | "connected" | "failed" | "expired";
+  status: "loading" | "waiting" | "qr" | "qr_expired" | "connected" | "failed" | "expired";
   qrDataUrl?: string;
   qrUpdatedAt?: number;
   message?: string;
@@ -53,6 +53,26 @@ export function PairingView({ id }: { id: string }) {
     };
   }, [id]);
 
+  const requestFreshQr = async () => {
+    const token = new URLSearchParams(window.location.hash.slice(1)).get("token");
+    if (!token) return;
+    setState({ status: "waiting", message: "Generating a new QR…" });
+    try {
+      const response = await fetch("/api/pairing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation: "refresh", id, token }),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        setState({ status: "expired", message: result.error ?? "Pairing link expired." });
+      }
+    } catch {
+      setState({ status: "qr_expired", message: "Could not request a new QR. Try again." });
+    }
+  };
+
   if (state.status === "connected") {
     return <div className="success"><span>✓</span><h1>Account linked</h1><p>You can close this page.</p></div>;
   }
@@ -72,8 +92,11 @@ export function PairingView({ id }: { id: string }) {
           <p className="privacy">This private link expires in 10 minutes. The QR is never stored permanently.</p>
         </div>
         <div className="qrPanel">
-          {state.qrDataUrl ? <img key={state.qrUpdatedAt} src={state.qrDataUrl} alt="WhatsApp pairing QR code" /> : <div className="qrPlaceholder"><span className="spinner" /><p>{state.message ?? (state.status === "expired" ? "Link expired" : state.status === "waiting" ? "Refreshing QR…" : "Preparing secure QR…")}</p></div>}
-          <span className={`status ${state.status}`}>{state.status === "qr" ? "Ready to scan" : state.status}</span>
+          {state.qrDataUrl
+            ? <img key={state.qrUpdatedAt} src={state.qrDataUrl} width="640" height="640" alt="WhatsApp pairing QR code" />
+            : <div className="qrPlaceholder">{state.status !== "qr_expired" && <span className="spinner" />}<p>{state.message ?? (state.status === "expired" ? "Link expired" : state.status === "qr_expired" ? "QR expired. Generate a new one when ready." : state.status === "waiting" ? "Generating QR…" : "Preparing secure QR…")}</p></div>}
+          <span className={`status ${state.status}`}>{state.status === "qr" ? "Ready to scan" : state.status === "qr_expired" ? "QR expired" : state.status}</span>
+          {state.status === "qr_expired" && <button type="button" onClick={() => void requestFreshQr()}>Generate new QR</button>}
         </div>
       </section>
       <footer>Unofficial WhatsApp integration powered by Baileys</footer>

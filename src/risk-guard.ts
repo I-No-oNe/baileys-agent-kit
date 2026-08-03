@@ -8,6 +8,7 @@ const SEND_ACTIONS = new Set<AgentAction["action"]>([
   "send_document",
   "send_location",
   "send_poll",
+  "send_album",
   "reply_text",
 ]);
 const GROUP_ADMIN_ACTIONS = new Set<AgentAction["action"]>([
@@ -66,12 +67,18 @@ function targets(action: AgentAction): string[] {
     case "send_location":
     case "send_poll":
       return [toJid(action.to)];
+    case "send_album":
+      return [toJid(action.to)];
     case "reply_text":
     case "react":
     case "edit_text":
     case "delete_message":
     case "mark_read":
       return [toJid(action.recipient)];
+    case "wait_for_message":
+      return [toJid(action.from)];
+    case "get_profile":
+      return [toJid(action.number)];
     case "get_group":
     case "update_group_subject":
     case "update_group_participants":
@@ -81,6 +88,10 @@ function targets(action: AgentAction): string[] {
     case "list_groups":
       return [];
   }
+}
+
+function sendAmount(action: AgentAction): number {
+  return action.action === "send_album" ? action.items.length : 1;
 }
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -115,6 +126,7 @@ export class RiskGuard {
     }
 
     const recipient = actionTargets[0];
+    const amount = sendAmount(action);
     const day = new Date().toISOString().slice(0, 10);
     const dailyKey = `${prefix}:${day}:sends`;
     const recipientKey = `${prefix}:${day}:recipient:${recipient}`;
@@ -130,8 +142,8 @@ export class RiskGuard {
       .exec();
 
     if (circuitOpen) throw new Error("WhatsApp safety circuit is open after repeated failures. Wait before retrying.");
-    if ((dailyCount ?? 0) >= this.config.maxSendsPerDay) throw new Error("Daily WhatsApp send limit reached.");
-    if ((recipientCount ?? 0) >= this.config.maxSendsPerRecipientPerDay) throw new Error(`Daily send limit reached for ${recipient}.`);
+    if ((dailyCount ?? 0) + amount > this.config.maxSendsPerDay) throw new Error("Daily WhatsApp send limit reached.");
+    if ((recipientCount ?? 0) + amount > this.config.maxSendsPerRecipientPerDay) throw new Error(`Daily send limit reached for ${recipient}.`);
     if (!knownRecipient && uniqueRecipients >= this.config.maxUniqueRecipientsPerDay) {
       throw new Error("Daily unique-recipient limit reached.");
     }
@@ -141,9 +153,9 @@ export class RiskGuard {
 
     await this.store
       .pipeline()
-      .incr(dailyKey)
+      .incrby(dailyKey, amount)
       .expire(dailyKey, 2 * 24 * 60 * 60)
-      .incr(recipientKey)
+      .incrby(recipientKey, amount)
       .expire(recipientKey, 2 * 24 * 60 * 60)
       .sadd(recipientsKey, recipient)
       .expire(recipientsKey, 2 * 24 * 60 * 60)

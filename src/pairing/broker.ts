@@ -14,6 +14,7 @@ type PairingSession = {
   qrDataUrl?: string;
   qrUpdatedAt?: number;
   qrExpiresAt?: number;
+  refreshRequestedAt?: number;
   message?: string;
   expiresAt: number;
 };
@@ -23,6 +24,17 @@ function redis() {
     url: requiredEnv("UPSTASH_REDIS_REST_URL", "KV_REST_API_URL"),
     token: requiredEnv("UPSTASH_REDIS_REST_TOKEN", "KV_REST_API_TOKEN"),
   });
+}
+
+function tokenMatches(session: PairingSession, token: string): boolean {
+  const expected = Buffer.from(session.tokenHash, "hex");
+  const actual = Buffer.from(tokenHash(token), "hex");
+  return timingSafeEqual(actual, expected);
+}
+
+async function savePairingSession(store: Redis, id: string, session: PairingSession) {
+  const remainingSeconds = Math.max(1, Math.ceil((session.expiresAt - Date.now()) / 1000));
+  await store.set(key(id), session, { ex: remainingSeconds });
 }
 
 export function brokerAuthorized(authorization: string | null): boolean {
@@ -46,16 +58,22 @@ export async function createPairingSession(origin: string) {
   return { id, shareUrl: `${configuredOrigin ?? origin}/pair/${id}#token=${token}` };
 }
 
+export function renderPairingQrDataUrl(qr: string): Promise<string> {
+  return QRCode.toDataURL(qr, { width: 640, margin: 4, errorCorrectionLevel: "M" });
+}
+
 export async function updatePairingSession(id: string, update: { qr?: string; status?: PairingSession["status"]; message?: string }) {
   const store = redis();
   const session = await store.get<PairingSession>(key(id));
   if (!session) throw new Error("Pairing session expired or does not exist.");
 
   if (update.qr) {
-    session.qrDataUrl = await QRCode.toDataURL(update.qr, { width: 640, margin: 3 });
+    session.qrDataUrl = await renderPairingQrDataUrl(update.qr);
     session.qrUpdatedAt = Date.now();
     session.qrExpiresAt = session.qrUpdatedAt + PAIRING_QR_TTL_MS;
     session.status = "qr";
+    delete session.refreshRequestedAt;
+    delete session.message;
   }
   if (update.status) session.status = update.status;
   if (update.message) session.message = update.message;
@@ -65,22 +83,40 @@ export async function updatePairingSession(id: string, update: { qr?: string; st
     delete session.qrExpiresAt;
   }
 
-  const remainingSeconds = Math.max(1, Math.ceil((session.expiresAt - Date.now()) / 1000));
-  await store.set(key(id), session, { ex: remainingSeconds });
+  await savePairingSession(store, id, session);
 }
 
 export async function viewPairingSession(id: string, token: string) {
   const session = await redis().get<PairingSession>(key(id));
   if (!session || session.expiresAt <= Date.now()) return null;
-  const expected = Buffer.from(session.tokenHash, "hex");
-  const actual = Buffer.from(tokenHash(token), "hex");
-  if (!timingSafeEqual(actual, expected)) return null;
+  if (!tokenMatches(session, token)) return null;
   const qrExpired = session.qrExpiresAt !== undefined && session.qrExpiresAt <= Date.now();
   return {
-    status: qrExpired ? "waiting" : session.status,
+    status: qrExpired ? "qr_expired" : session.status,
     qrDataUrl: qrExpired ? undefined : session.qrDataUrl,
     qrUpdatedAt: qrExpired ? undefined : session.qrUpdatedAt,
+    qrExpiresAt: qrExpired ? undefined : session.qrExpiresAt,
     message: session.message,
     expiresAt: session.expiresAt,
   };
+}
+
+export async function requestPairingRefresh(id: string, token: string): Promise<boolean> {
+  const store = redis();
+  const session = await store.get<PairingSession>(key(id));
+  if (!session || session.expiresAt <= Date.now() || !tokenMatches(session, token)) return false;
+  session.status = "waiting";
+  session.refreshRequestedAt = Date.now();
+  delete session.qrDataUrl;
+  delete session.qrUpdatedAt;
+  delete session.qrExpiresAt;
+  delete session.message;
+  await savePairingSession(store, id, session);
+  return true;
+}
+
+export async function getPairingRefreshStatus(id: string) {
+  const session = await redis().get<PairingSession>(key(id));
+  if (!session || session.expiresAt <= Date.now()) return null;
+  return { refreshRequestedAt: session.refreshRequestedAt };
 }

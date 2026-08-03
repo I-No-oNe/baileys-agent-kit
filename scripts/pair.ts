@@ -3,8 +3,12 @@ import { explainError } from "../src/explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "../src/pair";
 
 async function main() {
+  const broker = pairingBrokerFromEnv();
+  const brokerSessionId = process.env.PAIRING_SESSION_ID;
   await pairWhatsApp({
-    broker: pairingBrokerFromEnv(),
+    broker,
+    brokerSessionId,
+    manualQrRefresh: Boolean(brokerSessionId),
     onShareUrl: async (shareUrl) => {
       console.log(`Private pairing link (expires in 10 minutes):\n${shareUrl}`);
       if (process.env.GITHUB_STEP_SUMMARY) {

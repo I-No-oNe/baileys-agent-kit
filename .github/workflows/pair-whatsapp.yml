@@ -26,7 +26,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Create private pairing screen
+      - name: Create private pairing link
+        env:
+          PAIRING_BROKER_URL: ${{ secrets.PAIRING_BROKER_URL }}
+          PAIRING_BROKER_SECRET: ${{ secrets.PAIRING_BROKER_SECRET }}
+        run: npm run wa:pair-link
+      - name: Wait for QR scan
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}

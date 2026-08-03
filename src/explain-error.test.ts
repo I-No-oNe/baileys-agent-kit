@@ -29,6 +29,12 @@ test("explains safety and transient failures without blind retries", () => {
   assert.equal(busy.retryable, true);
 });
 
+test("explains message wait timeouts as safe to retry", () => {
+  const result = explainError(new Error("Timed out waiting for a new matching WhatsApp message."));
+  assert.equal(result.code, "MESSAGE_WAIT_TIMEOUT");
+  assert.equal(result.retryable, true);
+});
+
 test("redacts credentials from technical details", () => {
   const explanation = explainError(new Error("request failed token=secret-value npm_abcdefghijklmnopqrstuvwxyz"));
   assert.doesNotMatch(explanation.details ?? "", /secret-value|npm_abcdefghijklmnopqrstuvwxyz/);

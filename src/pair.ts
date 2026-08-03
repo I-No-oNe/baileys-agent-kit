@@ -4,9 +4,12 @@ import { createCoalescedSaver } from "./coalesced-saver";
 import { PAIRING_QR_TTL_MS } from "./pairing/constants";
 
 export type PairingBroker = { url: string; secret: string };
+export type BrokerPairingSession = { id: string; shareUrl: string };
 export type PairWhatsAppOptions = {
   accountId?: string;
   broker?: PairingBroker;
+  brokerSessionId?: string;
+  manualQrRefresh?: boolean;
   timeoutMs?: number;
   onQr?: (qr: string) => void | Promise<void>;
   onShareUrl?: (url: string) => void | Promise<void>;
@@ -31,15 +34,24 @@ export function pairingBrokerFromEnv(): PairingBroker | undefined {
   return { url, secret };
 }
 
+export async function createBrokerPairingSession(broker: PairingBroker): Promise<BrokerPairingSession> {
+  const session = await brokerRequest(broker, { operation: "create" });
+  return { id: String(session.id), shareUrl: String(session.shareUrl) };
+}
+
 export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<void> {
+  if (options.manualQrRefresh && (!options.broker || !options.brokerSessionId)) {
+    throw new Error("Manual QR refresh requires a pre-created pairing broker session.");
+  }
   const { state, saveCreds } = await createUpstashAuthState(options.accountId);
   const { version } = await fetchLatestBaileysVersion();
   const credentialSaver = createCoalescedSaver(saveCreds);
-  const brokerSession = options.broker
-    ? await brokerRequest(options.broker, { operation: "create" })
+  const pairingTimeoutMs = options.timeoutMs ?? 10 * 60_000;
+  const brokerSession = options.broker && !options.brokerSessionId
+    ? await createBrokerPairingSession(options.broker)
     : undefined;
-  const brokerId = brokerSession ? String(brokerSession.id) : undefined;
-  if (brokerSession && options.onShareUrl) await options.onShareUrl(String(brokerSession.shareUrl));
+  const brokerId = options.brokerSessionId ?? brokerSession?.id;
+  if (brokerSession && options.onShareUrl) await options.onShareUrl(brokerSession.shareUrl);
 
   let finished = false;
   let socket: ReturnType<typeof makeWASocket> | undefined;
@@ -47,20 +59,33 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
   try {
     await new Promise<void>((resolve, reject) => {
       let timeout: ReturnType<typeof setTimeout>;
+      let refreshTimer: ReturnType<typeof setInterval> | undefined;
+      let socketGeneration = 0;
+      let refreshCheckRunning = false;
+      let lastRefreshRequestedAt = 0;
       const finish = (error?: unknown) => {
         if (finished) return;
         finished = true;
         clearTimeout(timeout);
+        if (refreshTimer) clearInterval(refreshTimer);
         if (error) reject(error);
         else resolve();
       };
-      timeout = setTimeout(() => finish(new Error("WhatsApp pairing timed out.")), options.timeoutMs ?? 10 * 60_000);
+      timeout = setTimeout(() => finish(new Error("WhatsApp pairing timed out.")), pairingTimeoutMs);
 
       const connect = () => {
-        socket = makeWASocket({ auth: state, version, markOnlineOnConnect: false, syncFullHistory: false, qrTimeout: PAIRING_QR_TTL_MS });
-        socket.ev.on("creds.update", credentialSaver.schedule);
-        socket.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
-          if (finished) return;
+        const generation = ++socketGeneration;
+        const nextSocket = makeWASocket({
+          auth: state,
+          version,
+          markOnlineOnConnect: false,
+          syncFullHistory: false,
+          qrTimeout: options.manualQrRefresh ? pairingTimeoutMs + 60_000 : PAIRING_QR_TTL_MS,
+        });
+        socket = nextSocket;
+        nextSocket.ev.on("creds.update", credentialSaver.schedule);
+        nextSocket.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
+          if (finished || generation !== socketGeneration) return;
           try {
             if (qr) {
               await Promise.all([
@@ -90,6 +115,35 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
           }
         });
       };
+
+      const restartForFreshQr = async () => {
+        const previousSocket = socket;
+        socketGeneration += 1;
+        socket = undefined;
+        if (previousSocket) await previousSocket.end(undefined).catch(() => undefined);
+        if (!finished) connect();
+      };
+
+      const checkForRefreshRequest = async () => {
+        if (refreshCheckRunning || !options.manualQrRefresh || !brokerId || !options.broker) return;
+        refreshCheckRunning = true;
+        try {
+          const status = await brokerRequest(options.broker, { operation: "status", id: brokerId });
+          const requestedAt = Number(status.refreshRequestedAt ?? 0);
+          if (requestedAt > lastRefreshRequestedAt) {
+            lastRefreshRequestedAt = requestedAt;
+            await restartForFreshQr();
+          }
+        } catch {
+          // A transient broker read should not terminate an otherwise usable pairing session.
+        } finally {
+          refreshCheckRunning = false;
+        }
+      };
+
+      if (options.manualQrRefresh) {
+        refreshTimer = setInterval(() => void checkForRefreshRequest(), 2_000);
+      }
       connect();
     });
   } catch (error) {

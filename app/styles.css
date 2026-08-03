@@ -12,11 +12,15 @@ ol { margin: 0; padding-left: 24px; color: #dcebe3; font-size: 17px; line-height
 li::marker { color: var(--green); font-family: var(--font-mono), monospace; }
 .privacy { max-width: 480px; margin: 30px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .qrPanel { display: grid; justify-items: center; gap: 18px; }
-.qrPanel img, .qrPlaceholder { width: min(100%, 340px); aspect-ratio: 1; padding: 18px; border-radius: 24px; background: white; box-shadow: 0 22px 65px rgba(0,0,0,.38), 0 0 0 8px rgba(37,211,102,.06); animation: reveal .35s ease-out; }
+.qrPanel img, .qrPlaceholder { width: min(100%, 340px); aspect-ratio: 1 / 1; padding: 18px; border-radius: 24px; background: white; box-shadow: 0 22px 65px rgba(0,0,0,.38), 0 0 0 8px rgba(37,211,102,.06); animation: reveal .35s ease-out; }
+.qrPanel img { display: block; height: auto; object-fit: contain; }
 .qrPlaceholder { display: grid; place-content: center; justify-items: center; gap: 16px; color: #315342; text-align: center; }
 .spinner { width: 34px; height: 34px; border: 3px solid #cce5d7; border-top-color: #159447; border-radius: 50%; animation: spin .8s linear infinite; }
 .status { padding: 7px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 99px; color: var(--muted); font: 600 11px/1 var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .08em; }
 .status.qr { color: #87efa9; border-color: rgba(37,211,102,.3); background: rgba(37,211,102,.08); }
+.qrPanel button { min-height: 42px; padding: 0 18px; border: 1px solid rgba(37,211,102,.42); border-radius: 12px; color: #dff9ea; background: rgba(37,211,102,.12); font: 650 13px/1 var(--font-sans), sans-serif; cursor: pointer; transition: background .18s ease, border-color .18s ease; }
+.qrPanel button:hover { border-color: rgba(37,211,102,.72); background: rgba(37,211,102,.2); }
+.qrPanel button:focus-visible { outline: 3px solid rgba(37,211,102,.42); outline-offset: 3px; }
 .success { justify-self: center; text-align: center; padding: 50px; }
 .success > span { display: grid; place-items: center; width: 76px; height: 76px; margin: 0 auto 26px; border-radius: 24px; color: #062313; background: var(--green); font-size: 36px; box-shadow: 0 0 60px rgba(37,211,102,.3); }
 .success h1 { font-size: clamp(36px, 7vw, 64px); margin-bottom: 15px; }

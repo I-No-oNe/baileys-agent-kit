@@ -1,6 +1,6 @@
 {
   "name": "baileys-agent-kit",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "LLM-friendly WhatsApp automation on Baileys and GitHub Actions",
   "license": "MIT",
   "repository": {
@@ -36,7 +36,8 @@
     "check": "tsc --noEmit",
     "dev": "node scripts/next-port.mjs dev",
     "start": "node scripts/next-port.mjs start",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "wa:pair-link": "tsx scripts/create-pairing-link.ts",
     "wa:pair": "tsx scripts/pair.ts",
     "wa:run": "tsx scripts/run-action.ts",
     "wa:compat": "tsx scripts/check-compatibility.ts",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Redis } from "@upstash/redis";
+import type { AgentAction } from "./actions";
 import { RiskGuard, riskConfigFromEnv, type RiskConfig } from "./risk-guard";
 
 function memoryStore() {
@@ -21,6 +22,7 @@ function memoryStore() {
     get<T>(key: string): MemoryPipeline;
     set(key: string, value: unknown, options?: unknown): MemoryPipeline;
     incr(key: string): MemoryPipeline;
+    incrby(key: string, amount: number): MemoryPipeline;
     expire(key: string, seconds: number): MemoryPipeline;
     sadd(key: string, member: string): MemoryPipeline;
     scard(key: string): MemoryPipeline;
@@ -33,6 +35,11 @@ function memoryStore() {
     pipeline.get = <T,>(key: string) => { commands.push(() => store.get<T>(key)); return pipeline; };
     pipeline.set = (key, value) => { commands.push(() => store.set(key, value)); return pipeline; };
     pipeline.incr = (key) => { commands.push(() => store.incr(key)); return pipeline; };
+    pipeline.incrby = (key, amount) => { commands.push(async () => {
+      const value = Number(values.get(key) ?? 0) + amount;
+      values.set(key, value);
+      return value;
+    }); return pipeline; };
     pipeline.expire = (key) => { commands.push(() => store.expire()); return pipeline; };
     pipeline.sadd = (key, member) => { commands.push(() => store.sadd(key, member)); return pipeline; };
     pipeline.scard = (key) => { commands.push(() => store.scard(key)); return pipeline; };
@@ -88,15 +95,32 @@ test("limits repeated sends to a recipient", async () => {
 
 test("applies send limits to replies", async () => {
   const guard = new RiskGuard(memoryStore(), "replies", config);
-  const action = {
+  const action: AgentAction = {
     action: "reply_text",
     recipient: "+15551234567",
     messageId: "message-1",
     quotedText: "Original",
     text: "Reply",
-  } as const;
+  };
   await guard.reserve(action);
   await assert.rejects(guard.reserve(action), /limit reached for/);
+});
+
+test("counts each album item against send limits", async () => {
+  const guard = new RiskGuard(memoryStore(), "albums", {
+    ...config,
+    maxSendsPerRecipientPerDay: 2,
+  });
+  const action: AgentAction = {
+    action: "send_album",
+    to: "+15551234567",
+    items: [
+      { type: "image", url: "https://example.com/one.jpg" },
+      { type: "video", url: "https://example.com/two.mp4" },
+    ],
+  };
+  await guard.reserve(action);
+  await assert.rejects(guard.reserve(action), /Daily WhatsApp send limit/);
 });
 
 test("limits total and unique daily recipients", async () => {
@@ -131,6 +155,10 @@ test("blocks recipients outside an explicit allowlist", async () => {
   });
   await assert.rejects(
     guard.reserve({ action: "send_text", to: "+15551234567", text: "Hello" }),
+    /not in WA_ALLOWED_RECIPIENTS/,
+  );
+  await assert.rejects(
+    guard.reserve({ action: "get_profile", number: "+15551234567" }),
     /not in WA_ALLOWED_RECIPIENTS/,
   );
 });

@@ -30,6 +30,9 @@ try {
   ));
   assert.ok(text);
   assert.equal(JSON.parse(text.text).actionTool.name, "whatsapp");
+  assert.match(text.text, /send_album/);
+  assert.match(text.text, /wait_for_message/);
+  assert.match(text.text, /get_profile/);
 
   const missingPairing = await client.callTool({
     name: "whatsapp_pair_status",

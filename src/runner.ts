@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import { actionSchema } from "./actions";
 import { connectWhatsApp } from "./client";
 import { requiredEnv } from "./env";
-import { executeAction } from "./execute";
+import { executeAction, MessageWaitTimeoutError } from "./execute";
 import { RiskGuard } from "./risk-guard";
 
 const LOCK_TTL_SECONDS = 10 * 60;
@@ -31,7 +31,9 @@ export async function runAgentAction(input: unknown, accountId = process.env.WA_
     await riskGuard.recordSuccess();
     return result;
   } catch (error) {
-    if (reserved) await riskGuard.recordFailure().catch(() => undefined);
+    if (reserved && !(error instanceof MessageWaitTimeoutError)) {
+      await riskGuard.recordFailure().catch(() => undefined);
+    }
     throw error;
   } finally {
     if (close) await close().catch(() => undefined);

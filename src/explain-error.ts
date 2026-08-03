@@ -136,6 +136,16 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
+  if (/Timed out waiting for a new matching WhatsApp message/i.test(details)) {
+    return failure(
+      "MESSAGE_WAIT_TIMEOUT",
+      "No matching WhatsApp message arrived before the wait ended.",
+      "The selected sender did not deliver a new message during the requested listening window.",
+      ["Start another wait only if the user is still expected to reply.", "Increase timeoutSeconds up to 300 if a longer bounded wait is appropriate."],
+      true,
+      details,
+    );
+  }
   if (/limit reached|not in WA_ALLOWED_RECIPIENTS|Group administration is disabled/i.test(details)) {
     return failure(
       "SAFETY_POLICY_BLOCKED",

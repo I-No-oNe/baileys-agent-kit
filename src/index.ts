@@ -5,6 +5,13 @@ export { explainError, type ExplainedFailure } from "./explain-error";
 export { toJid } from "./jid";
 export { RiskGuard, riskConfigFromEnv, type RiskConfig } from "./risk-guard";
 export { runAgentAction } from "./runner";
-export { pairWhatsApp, pairingBrokerFromEnv, type PairWhatsAppOptions, type PairingBroker } from "./pair";
+export {
+  createBrokerPairingSession,
+  pairWhatsApp,
+  pairingBrokerFromEnv,
+  type BrokerPairingSession,
+  type PairWhatsAppOptions,
+  type PairingBroker,
+} from "./pair";
 export { diagnoseWhatsApp, type DoctorResult } from "./doctor";
 export { agentDescription } from "./agent-description";

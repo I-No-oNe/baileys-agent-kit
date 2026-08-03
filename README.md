@@ -45,8 +45,10 @@ Nothing requires an `I-No-oNe` deployment. The developer forks or copies this pr
 
 ## Included actions
 
-- `send_text`, `send_image`, `send_document`, `send_location`, `send_poll`
+- `send_text`, `send_image`, `send_document`, `send_location`, `send_poll`, `send_album`
 - `reply_text`, `react`, `edit_text`, `delete_message`, `mark_read`
+- `wait_for_message`
+- `get_profile`
 - `list_groups`, `get_group`, `create_group`
 - `update_group_subject`, `update_group_participants`
 
@@ -77,6 +79,42 @@ await executeAction(connection.socket, {
 });
 ```
 
+Send two to ten images or videos as one grouped WhatsApp album:
+
+```ts
+await executeAction(connection.socket, {
+  action: "send_album",
+  to: "+972501234567",
+  items: [
+    { type: "image", url: "https://example.com/one.jpg", caption: "First" },
+    { type: "video", url: "https://example.com/two.mp4", caption: "Second" },
+  ],
+});
+```
+
+Wait up to five minutes for a new message from a contact or group:
+
+```ts
+const incoming = await executeAction(connection.socket, {
+  action: "wait_for_message",
+  from: "+972501234567",
+  timeoutSeconds: 120,
+});
+```
+
+The result includes normalized text or caption, media type metadata, and a ready-to-use `replyTo` object for text messages. Add `participant` to filter one sender inside a group. The action ignores messages sent by the linked account and history-sync events. It does not download received media.
+
+Fetch the profile fields WhatsApp exposes to the linked account for one number:
+
+```ts
+const profile = await executeAction(connection.socket, {
+  action: "get_profile",
+  number: "+972501234567",
+});
+```
+
+The result can include registration status, temporary profile-picture URL, About/bio text, and business description, category, address, email, websites, and hours. Privacy-hidden or unavailable fields return `null`. WhatsApp does not reliably expose an arbitrary contact's display name. Profile lookup follows `WA_ALLOWED_RECIPIENTS` and does not support bulk number enumeration.
+
 ## Agent CLI
 
 The package installs `baileys-agent`, a stable JSON-oriented CLI:
@@ -88,7 +126,7 @@ baileys-agent pair --terminal
 echo '{"action":"list_groups"}' | baileys-agent run
 ```
 
-`describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Use `--json` for newline-delimited pairing events.
+`describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a square mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Use `--json` for newline-delimited pairing events. The GitHub Actions workflow uses the private browser link instead of a terminal-shaped QR.
 
 ## MCP for Claude Code and other agent apps
 
@@ -143,8 +181,10 @@ Agents should explain `likelyCause` in plain language, follow `nextSteps` in ord
    - `PAIRING_BROKER_URL`: the Vercel deployment URL
    - `PAIRING_BROKER_SECRET`: the same long random secret used by Vercel
    - `WA_ALLOWED_RECIPIENTS`: optional comma-separated phone numbers/JIDs the agent may contact
-5. Run **Pair WhatsApp** from the Actions tab. Open the private URL in its job summary, or send that URL to the person who controls the WhatsApp phone.
+5. Run **Pair WhatsApp** from the Actions tab. Open the URL shown by the completed **Create private pairing link** step or its green workflow notice. The square QR page is ready while the next step waits for the scan.
 6. Scan the QR within 10 minutes. The QR is removed as soon as pairing succeeds.
+
+The Actions QR is not replaced on a timer. When it expires, the page hides it and shows **Generate new QR**. A replacement is created only after that button is pressed. CLI and MCP image pairing still rotate expired QR values automatically because those surfaces do not have the browser refresh control.
 
 Generate the broker secret locally with `openssl rand -base64 48`.
 
@@ -172,7 +212,7 @@ gh api repos/OWNER/REPO/dispatches --input - <<'JSON'
 JSON
 ```
 
-The workflow prints exactly one JSON result object after a successful action. A caller that needs synchronous results should poll the workflow run and read its logs. GitHub Actions is intentionally an on-demand executor, not a real-time bot host.
+The workflow prints exactly one JSON result object after a successful action. A caller that needs synchronous results should poll the workflow run and read its logs. GitHub Actions is intentionally an on-demand executor, not a real-time bot host. `wait_for_message` receives only during its bounded action window; continuous inbound webhooks require a persistent worker.
 
 ## Risk controls
 
@@ -185,6 +225,8 @@ These controls reduce accidental spam and repeated failing connections. They can
 - Circuit breaker for 30 minutes after three failures in ten minutes
 - Group administration disabled unless `WA_ENABLE_GROUP_ADMIN=true`
 - Optional hard recipient allowlist through `WA_ALLOWED_RECIPIENTS`
+
+Each image or video in an album counts toward daily and per-recipient send limits. The album is still sent as one grouped user-visible message.
 
 The defaults can be changed with the matching repository variables listed in [.env.example](.env.example). Keep the limits conservative and use opt-in recipients. The library exports `RiskGuard` for callers outside the included Action runner.
 
@@ -224,7 +266,7 @@ npm run build
 ## Security notes
 
 - The pairing URL is a bearer secret. It uses a URL fragment so the viewer token is not sent in the initial browser request or ordinary Vercel access logs.
-- Pairing state expires after 10 minutes. QR codes refresh every 20 seconds and are cleared after connection.
+- Pairing state expires after 10 minutes. The Actions browser keeps each QR for its 60-second validity window, then requires an explicit refresh request. QR data is cleared after connection.
 - GitHub and Vercel share only the pairing broker secret; the browser never receives it.
 - The Action serializes work per `WA_ACCOUNT_ID` to avoid concurrent corruption and duplicate operations.
 - Give any LLM a narrow allowlist of recipients and actions in the calling application. This kit validates shape and limits, but it cannot decide who the model is authorized to message.
