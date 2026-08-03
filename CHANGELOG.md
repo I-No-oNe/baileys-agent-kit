@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.2.0...v0.3.0) (2026-08-03)
+
+
+### Features
+
+* add code pairing and recent accounts ([0f84595](https://github.com/I-No-oNe/baileys-agent-kit/commit/0f845951a40d58458589a11c3aaf22da2c24e30b))
+* add free local state and smart pairing ([943e411](https://github.com/I-No-oNe/baileys-agent-kit/commit/943e411eaeecdf8e4573efbe04cd42715ce999ce))
+* add text message replies ([4e3dc0c](https://github.com/I-No-oNe/baileys-agent-kit/commit/4e3dc0cbb6089f4251e9f765edf22903482579c3))
+* expand messaging and pairing tools ([6b32cf1](https://github.com/I-No-oNe/baileys-agent-kit/commit/6b32cf106f90bae5fe7c1878fdf95e3282fe7438))
+
+
+### Bug Fixes
+
+* add reliable npm publishing ([6b396df](https://github.com/I-No-oNe/baileys-agent-kit/commit/6b396df58d5c96a771161f11112f72da7d7da07f))
+* allow empty send limits ([07c0d9b](https://github.com/I-No-oNe/baileys-agent-kit/commit/07c0d9b8aeafda754f866c75602f4375cdf92636))
+* correct GitHub state workflow context ([9cec511](https://github.com/I-No-oNe/baileys-agent-kit/commit/9cec5114e2b5519bc31ac54d8366402748fb3844))
+* explain failures to agents ([347902f](https://github.com/I-No-oNe/baileys-agent-kit/commit/347902fb8216d3d1134b11c4bca4d40a5ce929aa))
+* harden local pairing runtime ([1174b76](https://github.com/I-No-oNe/baileys-agent-kit/commit/1174b76772c323a236a46a9433f5e397ad420b46))
+* make Actions results retrievable ([d73a066](https://github.com/I-No-oNe/baileys-agent-kit/commit/d73a06632e2133a7b041f8e75d9682bf64b52ee4))
+* refresh expired pairing QR codes ([41d7fcd](https://github.com/I-No-oNe/baileys-agent-kit/commit/41d7fcdcf28ec8682761f2ad852fd8963617b800))
+
 ## [0.2.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.9...v0.2.0) (2026-08-04)
 
 ### Features

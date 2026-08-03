@@ -1,6 +1,6 @@
 {
   "name": "baileys-agent-kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LLM-friendly WhatsApp automation on Baileys and GitHub Actions",
   "license": "MIT",
   "repository": {
