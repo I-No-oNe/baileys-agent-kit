@@ -8,8 +8,10 @@ export const agentDescription = {
   transport: ["CLI", "MCP stdio", "GitHub Actions"],
   commands: {
     describe: "Print this machine-readable description and the complete action schema.",
-    doctor: "Check environment, Redis, pairing, and WhatsApp protocol status.",
+    doctor: "Check local or Upstash storage, pairing, and WhatsApp protocol status.",
     pair: "Link WhatsApp with a one-time phone code, terminal QR, protected PNG, or private browser link.",
+    recentAccounts: "Discover recent accounts without writing action JSON.",
+    githubState: "Set up, pull, or push free encrypted GitHub Actions state.",
     run: "Execute one validated action from a JSON argument or stdin.",
     mcp: "Expose describe, doctor, QR or one-time-code pairing, and execution as MCP tools.",
   },

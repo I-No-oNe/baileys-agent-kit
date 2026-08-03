@@ -5,7 +5,7 @@ import makeWASocket, {
   proto,
   type WASocket,
 } from "@whiskeysockets/baileys";
-import { createUpstashAuthState } from "./auth/upstash";
+import { createAuthState } from "./auth";
 import { createCoalescedSaver } from "./coalesced-saver";
 import { createRecentAccountsCollector, type RecentAccount } from "./recent-accounts";
 
@@ -21,7 +21,7 @@ export async function connectWhatsApp(options: { accountId?: string; attempts?: 
   const attempts = options.attempts ?? 3;
   const timeoutMs = options.timeoutMs ?? 30_000;
   const shouldPrefetchRecentAccounts = options.prefetchRecentAccountsMs !== undefined;
-  const { state, saveCreds } = await createUpstashAuthState(options.accountId);
+  const { state, saveCreds } = await createAuthState(options.accountId);
   if (!state.creds.registered && !state.creds.me) throw new Error("WhatsApp is not linked. Run npm run wa:pair.");
 
   const { version, isLatest } = await fetchLatestBaileysVersion();

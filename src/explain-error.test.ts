@@ -42,6 +42,13 @@ test("explains message wait timeouts as safe to retry", () => {
   assert.equal(result.retryable, true);
 });
 
+test("asks Israeli users for a phone number before code pairing", () => {
+  const result = explainError(new Error("Israel was detected. A phone number with country code is required for one-time-code pairing."));
+  assert.equal(result.code, "PAIRING_PHONE_NUMBER_REQUIRED");
+  assert.equal(result.retryable, false);
+  assert.match(result.likelyCause, /one-time-code/);
+});
+
 test("redacts credentials from technical details", () => {
   const explanation = explainError(new Error("request failed token=secret-value npm_abcdefghijklmnopqrstuvwxyz"));
   assert.doesNotMatch(explanation.details ?? "", /secret-value|npm_abcdefghijklmnopqrstuvwxyz/);

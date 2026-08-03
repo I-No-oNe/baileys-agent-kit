@@ -66,7 +66,7 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
-  if (/^WA_[A-Z_]+ must be an integer/.test(details)) {
+  if (/^WA_[A-Z_]+ must be an integer|WA_STORAGE_BACKEND must be|Upstash Redis URL and token must be configured together/.test(details)) {
     return failure(
       "INVALID_CONFIGURATION",
       "A WhatsApp safety setting has an invalid value.",
@@ -112,6 +112,26 @@ export function explainError(error: unknown): ExplainedFailure {
       "No active WhatsApp pairing session exists for this account.",
       "Pairing status was requested before a pairing process was started, or the previous process ended.",
       ["Call whatsapp_pair_start first, then poll whatsapp_pair_status until it reports connected."],
+      false,
+      details,
+    );
+  }
+  if (/Israel was detected.*phone number/i.test(details)) {
+    return failure(
+      "PAIRING_PHONE_NUMBER_REQUIRED",
+      "An international phone number is required for pairing.",
+      "The library detected Israel locally and selected WhatsApp one-time-code pairing instead of a QR.",
+      ["Ask the account owner for their number in +972... format.", "Retry with --phone-number, WA_PHONE_NUMBER, or the whatsapp_pair_start phoneNumber field."],
+      false,
+      details,
+    );
+  }
+  if (/GitHub encrypted state|WA_STATE_ENCRYPTION_KEY|GITHUB_REPOSITORY|GITHUB_TOKEN|GH_TOKEN/i.test(details)) {
+    return failure(
+      "GITHUB_STATE_ERROR",
+      "Encrypted GitHub session state could not be synchronized.",
+      "The encryption key, repository access, state branch, or optimistic state version is missing or inconsistent.",
+      ["Run 'baileys-agent github-state setup' after pairing locally.", "Verify the repository secret and contents:write workflow permission, then restore before retrying."],
       false,
       details,
     );
@@ -166,7 +186,7 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
-  if (/Upstash|Redis/i.test(details)) {
+  if (/Upstash|Redis|local WhatsApp session store|session store/i.test(details)) {
     return failure(
       "SESSION_STORAGE_ERROR",
       "The WhatsApp session store is unavailable.",

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.8](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.7...v0.1.8) (2026-08-03)
+
+### Features
+
+* use free secure local file storage by default with optional Upstash compatibility
+* add encrypted GitHub Actions state synchronization without caches, artifacts, Vercel, or a hosted database
+* automatically prefer one-time-code pairing on Israeli machines without external geolocation
+
+### Security
+
+* persist safety reservations before GitHub Actions sends and use unified account concurrency
+* require the patched Hono release used by the MCP transport
+
+### Integration
+
+* upgrade with `npm install baileys-agent-kit@0.1.8`
+* local CLI and MCP users need no database configuration; run `baileys-agent doctor`, then `baileys-agent pair`
+* Israeli interactive terminals now prompt for a `+972...` number and return a one-time code; JSON or other non-interactive use must pass `--phone-number` or `WA_PHONE_NUMBER`
+* existing Upstash users continue unchanged; new GitHub Actions users can pair locally and run `baileys-agent github-state setup --repository OWNER/REPO`
+
 ## [0.1.7](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.6...v0.1.7) (2026-08-03)
 
 ### Bug Fixes

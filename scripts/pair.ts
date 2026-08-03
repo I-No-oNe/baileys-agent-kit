@@ -17,7 +17,7 @@ async function main() {
       }
     },
   });
-  console.log("WhatsApp linked. Session saved to Upstash.");
+  console.log("WhatsApp linked. Session saved.");
 }
 
 main().catch(async (error) => {

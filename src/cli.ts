@@ -4,11 +4,14 @@ import "./load-local-env";
 import { chmod, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 import QRCode from "qrcode";
 import qrcodeTerminal from "qrcode-terminal";
 import { agentDescription } from "./agent-description";
 import { diagnoseWhatsApp } from "./doctor";
 import { explainError } from "./explain-error";
+import { restoreGitHubState, saveGitHubState, setupGitHubState } from "./github-state";
+import { prefersPairingCode } from "./local-region";
 import { pairWhatsApp, pairingBrokerFromEnv } from "./pair";
 import { runAgentAction } from "./runner";
 
@@ -54,12 +57,40 @@ async function run() {
     console.log(JSON.stringify({ ok: true, result }));
     return;
   }
+  if (command === "github-state") {
+    const operation = args.shift();
+    const repository = flagValue("--repository");
+    const accountId = flagValue("--account");
+    const result = operation === "setup"
+      ? await setupGitHubState(repository, accountId)
+      : operation === "pull"
+        ? await restoreGitHubState({ repository, accountId })
+        : operation === "push"
+          ? await saveGitHubState({ repository, accountId })
+          : undefined;
+    if (!result) throw new Error("Use 'baileys-agent github-state setup', 'pull', or 'push'.");
+    console.log(JSON.stringify({ ok: true, result }));
+    return;
+  }
   if (command === "pair") {
     const accountId = flagValue("--account") ?? process.env.WA_ACCOUNT_ID ?? "default";
     const json = hasFlag("--json");
     const terminal = !json && (process.stdout.isTTY || hasFlag("--terminal"));
     const safeAccountId = accountId.replace(/[^a-zA-Z0-9_-]/g, "_");
     const qrFile = resolve(flagValue("--qr-file") ?? `${tmpdir()}/baileys-agent-${safeAccountId}-qr.png`);
+    let phoneNumber = flagValue("--phone-number") ?? process.env.WA_PHONE_NUMBER;
+    if (!phoneNumber && prefersPairingCode()) {
+      if (json || !process.stdin.isTTY) {
+        throw new Error("Israel was detected. Provide --phone-number +972... or WA_PHONE_NUMBER to use one-time-code pairing.");
+      }
+      const prompt = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        phoneNumber = (await prompt.question("WhatsApp phone number (+972...): ")).trim();
+      } finally {
+        prompt.close();
+      }
+      if (!phoneNumber) throw new Error("A phone number is required for one-time-code pairing in Israel.");
+    }
     const emit = (event: Record<string, unknown>) => {
       if (json) console.log(JSON.stringify(event));
     };
@@ -67,7 +98,7 @@ async function run() {
     try {
       await pairWhatsApp({
         accountId,
-        phoneNumber: flagValue("--phone-number"),
+        phoneNumber,
         broker: pairingBrokerFromEnv(),
         onShareUrl: (url) => {
           emit({ type: "pairing_url", url });
@@ -89,7 +120,7 @@ async function run() {
         },
       });
       emit({ type: "connected", accountId });
-      if (!json) console.log("WhatsApp linked. Session saved to Upstash.");
+      if (!json) console.log("WhatsApp linked. Session saved.");
     } finally {
       await unlink(qrFile).catch(() => undefined);
     }
@@ -103,6 +134,8 @@ Usage:
   baileys-agent doctor [--account ID]
   baileys-agent pair [--account ID] [--phone-number +15551234567] [--terminal] [--qr-file PATH] [--json]
   baileys-agent recent-accounts [--account ID] [--limit 20] [--prefetch-seconds 5]
+  baileys-agent github-state setup [--repository OWNER/REPO]
+  baileys-agent github-state pull|push [--repository OWNER/REPO]
   baileys-agent run [--account ID] --action '{"action":"list_groups"}'
 
 Use 'baileys-agent describe' for the complete machine-readable action schema.`);

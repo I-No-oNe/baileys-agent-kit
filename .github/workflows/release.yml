@@ -29,15 +29,16 @@ jobs:
               repo: context.repo.repo,
               tag: process.env.RELEASE_TAG,
             });
-            const marker = "## Install";
+            const marker = "## Install and integrate";
             if (!(release.body || "").includes(marker)) {
+              const version = process.env.RELEASE_TAG.replace(/^v/, "");
               const install = [
                 marker,
                 "",
                 "Requires Node.js 20 or newer.",
                 "",
                 "```bash",
-                "npm install baileys-agent-kit",
+                `npm install baileys-agent-kit@${version}`,
                 "```",
                 "",
                 "Run the CLI without a global install:",
@@ -45,6 +46,10 @@ jobs:
                 "```bash",
                 "npx --yes --package baileys-agent-kit baileys-agent doctor",
                 "```",
+                "",
+                "Local CLI and MCP use free file storage by default. Existing Upstash integrations remain compatible.",
+                "For GitHub Actions, pair locally and run `baileys-agent github-state setup --repository OWNER/REPO`.",
+                "See the release changelog and README migration section before changing an existing deployment.",
                 "",
                 "GitHub source archives are attached below.",
               ].join("\n");

@@ -1,6 +1,6 @@
 # Baileys Agent Kit
 
-An LLM-friendly TypeScript layer over Baileys that runs WhatsApp work in GitHub Actions. It includes typed actions, JSON Schema for tool calling, Upstash-backed multi-device auth, a private browser pairing screen, concurrency locking, and a daily protocol compatibility check.
+An LLM-friendly TypeScript layer over Baileys for local CLI/MCP use and optional GitHub Actions automation. It includes typed actions, JSON Schema for tool calling, free local session storage, persistent safety controls, encrypted GitHub state sync, optional Upstash support, and protocol compatibility checks.
 
 > Baileys is an unofficial WhatsApp Web client. It can break when WhatsApp changes its protocol and may put an account at risk. Do not use a valuable business number without accepting that risk.
 
@@ -31,17 +31,15 @@ GitHub provides source archives on the [Releases page](https://github.com/I-No-o
 ## Runtime design
 
 ```text
-LLM / application
-      │ repository_dispatch or workflow_dispatch
-      ▼
-GitHub Actions ───── Baileys socket ───── WhatsApp
-      │
-      └──── TLS transport + auth state in your Upstash account
+Local CLI / MCP ─── private file state ─── Baileys ─── WhatsApp
 
-Pair action ── publishes expiring QR ── your Vercel pairing screen
+Optional GitHub Actions ─── AES-256-GCM ciphertext ─── state branch
+
+Optional distributed mode ─── Upstash Redis
+Optional hosted pairing ─── Vercel browser screen
 ```
 
-Nothing requires an `I-No-oNe` deployment. The developer forks or copies this project, then connects their own GitHub, Vercel, and Upstash accounts.
+Local use requires no hosted database, Vercel project, payment method, or GitHub repository. Upstash and the Vercel pairing screen remain opt-in for deployments that need distributed workers or remote browser pairing.
 
 ## Included actions
 
@@ -137,10 +135,11 @@ baileys-agent doctor
 baileys-agent pair --terminal
 baileys-agent pair --phone-number +15551234567
 baileys-agent recent-accounts
+baileys-agent github-state setup --repository OWNER/REPO
 baileys-agent run --action '{"action":"list_groups"}'
 ```
 
-`describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a square mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Pass `--phone-number` with an international country code to receive WhatsApp's one-time pairing code instead. Use `--json` for newline-delimited pairing events. The GitHub Actions workflow uses the private browser link instead of a terminal-shaped QR.
+`describe` emits the complete action schema. `pair` detects Israel locally from the OS timezone or locale and, in an interactive terminal, asks for the number and returns WhatsApp's one-time pairing code. The number is not saved. Other regions use a QR by default. Pass `--phone-number` (or `WA_PHONE_NUMBER` for non-interactive use) to select code pairing explicitly anywhere. QR mode writes a square mode-`0600` PNG to the system temporary directory and can render it in the terminal. Use `--json` for newline-delimited pairing events; because JSON mode cannot prompt, Israeli users must provide the number explicitly. Pair locally before enabling free encrypted GitHub Actions state.
 
 ## MCP for Claude Code and other agent apps
 
@@ -152,7 +151,7 @@ The `baileys-agent-mcp` stdio server exposes five tools:
 - `whatsapp_pair_status`
 - `whatsapp_execute`
 
-Pairing tools return the current QR as an MCP `image/png` content block, plus its expiry time. Pass `phoneNumber` to `whatsapp_pair_start` to receive a one-time code instead. Compatible apps can display the image or code and request status until connected. The MCP process remains alive while the phone completes pairing.
+Pairing tools return the current QR as an MCP `image/png` content block, plus its expiry time. On an Israeli local runtime, `whatsapp_pair_start` without `phoneNumber` returns `PAIRING_PHONE_NUMBER_REQUIRED` so the agent can request `+972...` privately and retry for a one-time code. Other regions return a QR by default. Compatible apps can display the image or code and request status until connected. The MCP process remains alive while the phone completes pairing.
 
 This repository includes a project-scoped [.mcp.json](.mcp.json). After publishing, a generic MCP client configuration is:
 
@@ -167,7 +166,7 @@ This repository includes a project-scoped [.mcp.json](.mcp.json). After publishi
 }
 ```
 
-Pass the Upstash and safety environment variables through the agent app’s MCP configuration or launch environment. Never embed their values in a committed configuration file.
+Pass optional storage and safety environment variables through the agent app’s MCP configuration or launch environment. Never embed secrets in a committed configuration file. With no storage variables, MCP uses the free local file backend.
 
 ## Agent-readable failures
 
@@ -188,29 +187,54 @@ Agents should explain `likelyCause` in plain language, follow `nextSteps` in ord
 
 ## Setup
 
-1. Create an Upstash Redis database. It stores Baileys credentials and signal keys. Treat its REST token as an account credential.
-2. Deploy this repository to a Vercel project owned by the developer or company.
-3. In Vercel, set `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `PAIRING_BROKER_SECRET`, and `PAIRING_PUBLIC_URL`.
-4. In the GitHub repository, add Actions secrets with the same Upstash values plus:
-   - `PAIRING_BROKER_URL`: the Vercel deployment URL
-   - `PAIRING_BROKER_SECRET`: the same long random secret used by Vercel
-   - `WA_ALLOWED_RECIPIENTS`: optional comma-separated phone numbers/JIDs the agent may contact
-5. Run **Pair WhatsApp** from the Actions tab. Open the URL shown by the completed **Create private pairing link** step or its green workflow notice. The private page offers a square QR and a **Use phone number instead** option.
-6. Scan the QR or enter the one-time code in WhatsApp within 10 minutes. Pairing details are removed as soon as linking succeeds.
+### Free local CLI or MCP
 
-The Actions QR is not replaced on a timer. When it expires, the page hides it and shows **Generate new QR**. A replacement is created only after that button is pressed. CLI and MCP image pairing still rotate expired QR values automatically because those surfaces do not have the browser refresh control.
-
-Generate the broker secret locally with `openssl rand -base64 48`.
-
-For local CLI or MCP use, copy `.env.example` to `.env.local` and fill in the Upstash REST URL and a read-write REST token. Local entrypoints load `.env.local` and `.env` automatically. Then verify storage before pairing or sending:
+No environment variables are required:
 
 ```bash
 baileys-agent doctor
 baileys-agent pair --terminal
+baileys-agent doctor
 baileys-agent recent-accounts
 ```
 
-Doctor performs an expiring write/delete probe. A read-only token reports `SESSION_STORAGE_READ_ONLY`; do not pair until Redis reports `ok`.
+On an Israeli machine, `baileys-agent pair` prompts for `+972...` and shows a one-time code. WhatsApp: **Settings → Linked Devices → Link a Device → Link with phone number instead**, then enter the code. Outside Israel, the same command shows a QR unless `--phone-number` is supplied.
+
+Before pairing, doctor should report writable `file` storage and `WHATSAPP_NOT_PAIRED`. Pair once, then the same account is available to CLI and MCP. State uses atomic writes, account-level heartbeat locking, directory mode `0700`, and file mode `0600`.
+
+The default state location follows the operating system:
+
+- Linux: `$XDG_STATE_HOME/baileys-agent-kit` or `~/.local/state/baileys-agent-kit`
+- macOS: `~/Library/Application Support/baileys-agent-kit`
+- Windows: `%LOCALAPPDATA%/baileys-agent-kit`
+
+Set `WA_STATE_DIR` for an explicit location. Set `WA_ACCOUNT_ID` to keep multiple accounts separate.
+
+### Free GitHub Actions integration
+
+Pair locally first. With GitHub CLI authenticated to a repository where you can manage Actions secrets and contents, run:
+
+```bash
+baileys-agent github-state setup --repository OWNER/REPO
+```
+
+The command generates a 256-bit key without printing it, uploads the current local account as AES-256-GCM ciphertext to the orphan `baileys-agent-state` branch, and stores the key as the repository secret `WA_STATE_ENCRYPTION_KEY`. The included action workflow then restores state before each action, persists safety reservations before sending, and saves updated auth/failure state afterward.
+
+The state branch contains ciphertext only. Do not expose `WA_STATE_ENCRYPTION_KEY` to pull-request, fork, or Dependabot workflows. A malicious default-branch workflow or repository administrator can still access repository secrets; encrypted branch storage does not protect against a compromised repository owner.
+
+### Optional Upstash and hosted browser pairing
+
+Existing installations remain compatible. Set both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the library selects Upstash automatically. Or set `WA_STORAGE_BACKEND=upstash` explicitly. Doctor performs a write/delete probe and reports `SESSION_STORAGE_READ_ONLY` for a read-only token.
+
+The Vercel browser pairing broker remains optional. It requires writable Upstash storage plus `PAIRING_BROKER_URL`, `PAIRING_PUBLIC_URL`, and matching `PAIRING_BROKER_SECRET` values. Local QR/MCP/phone-code pairing does not require that broker.
+
+### Migrating from an earlier version
+
+- Existing users with both Upstash variables continue using Upstash without migration.
+- New users with no Upstash variables automatically use local files.
+- `WA_STORAGE_BACKEND=file` explicitly ignores legacy Upstash variables.
+- Switching backends does not silently copy authentication material. Pair again, or use the GitHub setup command from an already paired local file account.
+- The hosted pairing workflow is optional; free GitHub state is bootstrapped from local pairing instead.
 
 ## Dispatch from code or an LLM
 
@@ -269,8 +293,8 @@ Runtime package installation is deliberately forbidden. Updating only through lo
 
 ## Efficiency
 
-- Baileys signal-key reads and writes are batched into one Upstash request per operation.
-- Send-limit validation and reservation use two Upstash pipeline requests instead of many individual requests.
+- Local auth and safety writes are serialized, fsynced, and atomically renamed.
+- Optional Upstash signal-key reads/writes and safety reservations remain batched.
 - Bursts of Baileys credential updates are coalesced while always flushing the latest state before shutdown.
 - Recent-account metadata is prefetched only for `list_recent_accounts`, with a caller-bounded wait; ordinary actions do not pay this delay.
 - GitHub Actions restores exact-lockfile `node_modules` caches and skips `npm ci` on cache hits.
@@ -291,8 +315,10 @@ npm run build
 
 ## Security notes
 
+- Local auth and Signal keys are account credentials. The library restricts filesystem permissions but cannot protect a compromised local user account or machine.
+- GitHub state uses account-bound AES-256-GCM encryption with a random nonce. Git history retains older ciphertext; rotate the key and remove/recreate the state branch after key compromise or account logout.
+- The free GitHub workflow never places WhatsApp auth in Actions caches or artifacts. GitHub documents caches as readable by pull-request authors and artifacts as retention-limited.
 - The pairing URL is a bearer secret. It uses a URL fragment so the viewer token is not sent in the initial browser request or ordinary Vercel access logs.
 - Pairing state expires after 10 minutes. The Actions browser keeps each QR for its 60-second validity window, then requires an explicit refresh request. QR and one-time-code data are cleared after connection.
-- GitHub and Vercel share only the pairing broker secret; the browser never receives it.
 - The Action serializes work per `WA_ACCOUNT_ID` to avoid concurrent corruption and duplicate operations.
 - Give any LLM a narrow allowlist of recipients and actions in the calling application. This kit validates shape and limits, but it cannot decide who the model is authorized to message.

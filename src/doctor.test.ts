@@ -1,6 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { diagnoseWhatsApp } from "./doctor";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+test("doctor uses writable local storage without Redis configuration", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "baileys-agent-doctor-"));
+  const previousBackend = process.env.WA_STORAGE_BACKEND;
+  const previousDirectory = process.env.WA_STATE_DIR;
+  process.env.WA_STORAGE_BACKEND = "file";
+  process.env.WA_STATE_DIR = directory;
+  try {
+    const result = await diagnoseWhatsApp("local-doctor");
+    assert.equal(result.redis, "unused");
+    assert.deepEqual(result.sessionStorage, { backend: "file", status: "ok", path: directory });
+    assert.equal(result.guidance.some((item) => item.code === "MISSING_CONFIGURATION"), false);
+    assert.equal(result.guidance.some((item) => item.code === "WHATSAPP_NOT_PAIRED"), true);
+  } finally {
+    if (previousBackend === undefined) delete process.env.WA_STORAGE_BACKEND;
+    else process.env.WA_STORAGE_BACKEND = previousBackend;
+    if (previousDirectory === undefined) delete process.env.WA_STATE_DIR;
+    else process.env.WA_STATE_DIR = previousDirectory;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("doctor rejects a read-only Redis token", async () => {
   const originalUrl = process.env.UPSTASH_REDIS_REST_URL;

@@ -7,6 +7,7 @@ import {
   type SignalDataTypeMap,
 } from "@whiskeysockets/baileys";
 import { requiredEnv } from "../env";
+import { validateAccountId } from "../local-files";
 
 const encode = (value: unknown) => JSON.stringify(value, BufferJSON.replacer);
 const decode = <T>(value: string) => JSON.parse(value, BufferJSON.reviver) as T;
@@ -15,7 +16,7 @@ export async function createUpstashAuthState(accountId = process.env.WA_ACCOUNT_
   state: AuthenticationState;
   saveCreds: () => Promise<void>;
 }> {
-  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(accountId)) throw new Error("WA_ACCOUNT_ID contains unsupported characters.");
+  validateAccountId(accountId);
 
   const redis = new Redis({
     url: requiredEnv("UPSTASH_REDIS_REST_URL", "KV_REST_API_URL"),

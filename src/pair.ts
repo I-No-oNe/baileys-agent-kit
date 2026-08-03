@@ -1,6 +1,8 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
-import { createUpstashAuthState } from "./auth/upstash";
+import { createAuthState, storageBackendFromEnv } from "./auth";
 import { createCoalescedSaver } from "./coalesced-saver";
+import { acquireLocalAccountLock } from "./local-files";
+import { prefersPairingCode } from "./local-region";
 import { PAIRING_QR_TTL_MS } from "./pairing/constants";
 
 export type PairingBroker = { url: string; secret: string };
@@ -63,10 +65,26 @@ export async function createBrokerPairingSession(broker: PairingBroker): Promise
 }
 
 export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<void> {
+  const phoneNumber = options.phoneNumber ?? process.env.WA_PHONE_NUMBER;
+  if (!phoneNumber && !options.broker && prefersPairingCode()) {
+    throw new Error("Israel was detected. A phone number with country code is required for one-time-code pairing.");
+  }
+  const accountId = options.accountId ?? process.env.WA_ACCOUNT_ID ?? "default";
+  const releaseLock = storageBackendFromEnv() === "file"
+    ? await acquireLocalAccountLock(accountId)
+    : undefined;
+  try {
+    await pairWhatsAppUnlocked({ ...options, accountId, phoneNumber });
+  } finally {
+    await releaseLock?.();
+  }
+}
+
+async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void> {
   if (options.manualQrRefresh && (!options.broker || !options.brokerSessionId)) {
     throw new Error("Manual QR refresh requires a pre-created pairing broker session.");
   }
-  const { state, saveCreds } = await createUpstashAuthState(options.accountId);
+  const { state, saveCreds } = await createAuthState(options.accountId);
   const { version } = await fetchLatestBaileysVersion();
   const credentialSaver = createCoalescedSaver(saveCreds);
   const pairingTimeoutMs = options.timeoutMs ?? 10 * 60_000;

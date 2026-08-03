@@ -121,7 +121,7 @@ server.registerTool("whatsapp_capabilities", {
 }, async () => ({ content: [{ type: "text", text: JSON.stringify(agentDescription, null, 2) }] }));
 
 server.registerTool("whatsapp_doctor", {
-  description: "Check configuration, Redis connectivity, pairing state, and WhatsApp protocol compatibility before acting.",
+  description: "Check local or Upstash session storage, pairing state, safety configuration, and WhatsApp protocol compatibility before acting.",
   inputSchema: z.object({ accountId: z.string().min(1).optional() }),
   annotations: { readOnlyHint: true, openWorldHint: true },
 }, async ({ accountId }) => {
@@ -130,7 +130,7 @@ server.registerTool("whatsapp_doctor", {
 });
 
 server.registerTool("whatsapp_pair_start", {
-  description: "Start or resume WhatsApp pairing. Returns a QR image by default, or a one-time code when phoneNumber is provided.",
+  description: "Start or resume WhatsApp pairing. Israeli local runtimes request phoneNumber and return a one-time code; other regions return a QR by default.",
   inputSchema: z.object({ accountId: z.string().min(1).optional(), phoneNumber: z.string().min(8).optional().describe("International phone number with country code.") }),
   annotations: { readOnlyHint: false, openWorldHint: true },
 }, async ({ accountId = "default", phoneNumber }) => pairingResult(accountId, await startPairing(accountId, phoneNumber)));

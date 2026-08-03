@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pair-whatsapp-${{ inputs.account_id }}
+  group: whatsapp-state-${{ inputs.account_id }}
   cancel-in-progress: true
 
 jobs:

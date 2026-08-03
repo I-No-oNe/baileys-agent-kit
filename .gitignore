@@ -4,4 +4,5 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+.baileys-agent/
 npm-debug.log*

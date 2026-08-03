@@ -1,6 +1,24 @@
-import type { Redis } from "@upstash/redis";
 import type { AgentAction } from "./actions";
 import { toJid } from "./jid";
+
+export type RiskStorePipeline = {
+  get<T>(key: string): RiskStorePipeline;
+  set(key: string, value: unknown, options?: { ex?: number }): RiskStorePipeline;
+  incr(key: string): RiskStorePipeline;
+  incrby(key: string, amount: number): RiskStorePipeline;
+  expire(key: string, seconds: number): RiskStorePipeline;
+  sadd(key: string, member: string): RiskStorePipeline;
+  scard(key: string): RiskStorePipeline;
+  sismember(key: string, member: string): RiskStorePipeline;
+  exec(): Promise<any[]>;
+};
+
+export type RiskStore = {
+  get<T>(key: string): Promise<T | null>;
+  set(key: string, value: unknown, options?: { ex?: number; nx?: boolean }): Promise<unknown>;
+  del(key: string): Promise<unknown>;
+  pipeline(): RiskStorePipeline;
+};
 
 const SEND_ACTIONS = new Set<AgentAction["action"]>([
   "send_text",
@@ -95,11 +113,15 @@ function sendAmount(action: AgentAction): number {
   return action.action === "send_album" ? action.items.length : 1;
 }
 
+export function isSendAction(action: AgentAction): boolean {
+  return SEND_ACTIONS.has(action.action);
+}
+
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export class RiskGuard {
   constructor(
-    private readonly store: Redis,
+    private readonly store: RiskStore,
     private readonly accountId: string,
     private readonly config: RiskConfig = riskConfigFromEnv(),
   ) {}
