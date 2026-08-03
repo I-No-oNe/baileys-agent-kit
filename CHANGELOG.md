@@ -10,6 +10,13 @@
 
 * explain billed wait windows, per-account Actions serialization, and the single-socket backend pattern
 
+## [0.1.10](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.9...v0.1.10) (2026-08-03)
+
+
+### Bug Fixes
+
+* make Actions results retrievable ([d73a066](https://github.com/I-No-oNe/baileys-agent-kit/commit/d73a06632e2133a7b041f8e75d9682bf64b52ee4))
+
 ## [0.1.9](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.8...v0.1.9) (2026-08-03)
 
 ### Bug Fixes
