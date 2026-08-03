@@ -27,7 +27,7 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
       WA_ACCOUNT_ID: ${{ inputs.account_id || github.event.client_payload.account_id || 'default' }}
-      WA_STATE_DIR: ${{ runner.temp }}/baileys-agent-state
+      WA_STATE_DIR: ${{ github.workspace }}/.baileys-agent-state
       WA_STATE_ENCRYPTION_KEY: ${{ secrets.WA_STATE_ENCRYPTION_KEY }}
       WA_STORAGE_BACKEND: ${{ secrets.WA_STATE_ENCRYPTION_KEY != '' && 'file' || 'upstash' }}
     steps:

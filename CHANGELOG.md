@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.9](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.8...v0.1.9) (2026-08-03)
+
+### Bug Fixes
+
+* use an available GitHub context for the encrypted state directory
+
+### Integration
+
+* upgrade with `npm install baileys-agent-kit@0.1.9`
+* GitHub Actions users should update the included `whatsapp-action.yml`; local CLI/MCP and existing Upstash integrations need no configuration changes from `0.1.8`
+
 ## [0.1.8](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.7...v0.1.8) (2026-08-03)
 
 ### Features
