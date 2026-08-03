@@ -1,21 +1,25 @@
 # Changelog
 
-## Unreleased
+## [0.2.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.9...v0.2.0) (2026-08-04)
+
+### Features
+
+* publish Actions results through live Check annotations, step output, summaries, and short-lived private-repository artifacts ([d73a066](https://github.com/I-No-oNe/baileys-agent-kit/commit/d73a06632e2133a7b041f8e75d9682bf64b52ee4))
 
 ### Bug Fixes
 
-* silence Baileys protocol logs by default and publish Actions results outside raw logs
+* silence Baileys protocol logs by default so structured action results remain readable ([d73a066](https://github.com/I-No-oNe/baileys-agent-kit/commit/d73a06632e2133a7b041f8e75d9682bf64b52ee4))
 
 ### Documentation
 
 * explain billed wait windows, per-account Actions serialization, and the single-socket backend pattern
 
-## [0.1.10](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.9...v0.1.10) (2026-08-03)
+### Integration
 
-
-### Bug Fixes
-
-* make Actions results retrievable ([d73a066](https://github.com/I-No-oNe/baileys-agent-kit/commit/d73a06632e2133a7b041f8e75d9682bf64b52ee4))
+* upgrade with `npm install baileys-agent-kit@0.2.0`
+* private GitHub Actions repositories receive detailed results automatically; public repositories keep detailed summaries and artifacts disabled
+* `WA_BAILEYS_LOG_LEVEL` defaults to `silent`; use `error` or `debug` only for temporary diagnosis
+* conversational backends should reuse one connection per WhatsApp account and serialize outbound mutations internally
 
 ## [0.1.9](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.8...v0.1.9) (2026-08-03)
 
