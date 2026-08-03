@@ -28,6 +28,7 @@ export const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("mark_read"), ...messageKey }),
   z.object({ action: z.literal("wait_for_message"), from: recipient, participant, timeoutSeconds: z.number().int().min(1).max(300).optional() }),
   z.object({ action: z.literal("get_profile"), number: profileNumber }),
+  z.object({ action: z.literal("list_recent_accounts"), limit: z.number().int().min(1).max(100).optional(), prefetchSeconds: z.number().int().min(0).max(30).optional() }),
   z.object({ action: z.literal("list_groups") }),
   z.object({ action: z.literal("get_group"), group }),
   z.object({ action: z.literal("create_group"), subject: z.string().min(1).max(100), participants: z.array(recipient).min(1) }),

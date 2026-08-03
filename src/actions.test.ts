@@ -58,6 +58,15 @@ test("accepts a single-number profile lookup", () => {
   assert.equal(actionSchema.safeParse({ action: "get_profile", number: "120363000000@g.us" }).success, false);
 });
 
+test("accepts bounded recent-account prefetching", () => {
+  assert.deepEqual(actionSchema.parse({ action: "list_recent_accounts", limit: 25, prefetchSeconds: 8 }), {
+    action: "list_recent_accounts",
+    limit: 25,
+    prefetchSeconds: 8,
+  });
+  assert.equal(actionSchema.safeParse({ action: "list_recent_accounts", prefetchSeconds: 31 }).success, false);
+});
+
 test("requires 2 to 10 album items and caps wait time", () => {
   assert.equal(actionSchema.safeParse({
     action: "send_album",

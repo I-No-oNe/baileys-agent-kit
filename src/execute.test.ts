@@ -212,6 +212,18 @@ test("fetches available profile fields for one WhatsApp number", async () => {
   });
 });
 
+test("returns prefetched recent accounts with the requested limit", async () => {
+  const result = await executeAction({} as WASocket, { action: "list_recent_accounts", limit: 1 }, {
+    recentAccounts: [
+      { jid: "15550000001@s.whatsapp.net", name: "Ada", type: "contact", lastActivityAt: 200, unreadCount: 1 },
+      { jid: "120363000000@g.us", name: "Team", type: "group", lastActivityAt: 100, unreadCount: 0 },
+    ],
+  });
+  assert.deepEqual(result, [
+    { jid: "15550000001@s.whatsapp.net", name: "Ada", type: "contact", lastActivityAt: 200, unreadCount: 1 },
+  ]);
+});
+
 test("maps group participant updates and normalizes phone numbers", async () => {
   const calls: unknown[][] = [];
   const socket = {

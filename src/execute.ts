@@ -7,6 +7,7 @@ import {
 } from "@whiskeysockets/baileys";
 import { actionSchema, type AgentAction } from "./actions";
 import { toJid } from "./jid";
+import type { RecentAccount } from "./recent-accounts";
 
 export class MessageWaitTimeoutError extends Error {}
 
@@ -106,7 +107,7 @@ function waitForMessage(
   });
 }
 
-export async function executeAction(socket: WASocket, input: unknown): Promise<unknown> {
+export async function executeAction(socket: WASocket, input: unknown, context: { recentAccounts?: RecentAccount[] } = {}): Promise<unknown> {
   const action: AgentAction = actionSchema.parse(input);
 
   switch (action.action) {
@@ -203,6 +204,8 @@ export async function executeAction(socket: WASocket, input: unknown): Promise<u
           : null,
       };
     }
+    case "list_recent_accounts":
+      return (context.recentAccounts ?? []).slice(0, action.limit ?? 20);
     case "list_groups": {
       const groups = await socket.groupFetchAllParticipating();
       return Object.values(groups).map(({ id, subject, owner, size }) => ({ id, subject, owner, size }));

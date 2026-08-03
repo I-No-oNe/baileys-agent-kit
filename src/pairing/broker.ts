@@ -10,11 +10,14 @@ const tokenHash = (token: string) => createHash("sha256").update(token).digest("
 
 type PairingSession = {
   tokenHash: string;
-  status: "waiting" | "qr" | "connected" | "failed";
+  status: "waiting" | "qr" | "code" | "connected" | "failed";
   qrDataUrl?: string;
   qrUpdatedAt?: number;
   qrExpiresAt?: number;
   refreshRequestedAt?: number;
+  codeRequestedAt?: number;
+  phoneNumber?: string;
+  pairingCode?: string;
   message?: string;
   expiresAt: number;
 };
@@ -62,7 +65,7 @@ export function renderPairingQrDataUrl(qr: string): Promise<string> {
   return QRCode.toDataURL(qr, { width: 640, margin: 4, errorCorrectionLevel: "M" });
 }
 
-export async function updatePairingSession(id: string, update: { qr?: string; status?: PairingSession["status"]; message?: string }) {
+export async function updatePairingSession(id: string, update: { qr?: string; pairingCode?: string; status?: PairingSession["status"]; message?: string }) {
   const store = redis();
   const session = await store.get<PairingSession>(key(id));
   if (!session) throw new Error("Pairing session expired or does not exist.");
@@ -75,12 +78,22 @@ export async function updatePairingSession(id: string, update: { qr?: string; st
     delete session.refreshRequestedAt;
     delete session.message;
   }
+  if (update.pairingCode) {
+    session.pairingCode = update.pairingCode;
+    session.status = "code";
+    delete session.qrDataUrl;
+    delete session.qrUpdatedAt;
+    delete session.qrExpiresAt;
+  }
   if (update.status) session.status = update.status;
   if (update.message) session.message = update.message;
   if (update.status === "connected") {
     delete session.qrDataUrl;
     delete session.qrUpdatedAt;
     delete session.qrExpiresAt;
+    delete session.pairingCode;
+    delete session.phoneNumber;
+    delete session.codeRequestedAt;
   }
 
   await savePairingSession(store, id, session);
@@ -96,6 +109,7 @@ export async function viewPairingSession(id: string, token: string) {
     qrDataUrl: qrExpired ? undefined : session.qrDataUrl,
     qrUpdatedAt: qrExpired ? undefined : session.qrUpdatedAt,
     qrExpiresAt: qrExpired ? undefined : session.qrExpiresAt,
+    pairingCode: session.pairingCode,
     message: session.message,
     expiresAt: session.expiresAt,
   };
@@ -111,6 +125,25 @@ export async function requestPairingRefresh(id: string, token: string): Promise<
   delete session.qrUpdatedAt;
   delete session.qrExpiresAt;
   delete session.message;
+  delete session.pairingCode;
+  delete session.phoneNumber;
+  delete session.codeRequestedAt;
+  await savePairingSession(store, id, session);
+  return true;
+}
+
+export async function requestPairingCode(id: string, token: string, phoneNumber: string): Promise<boolean> {
+  const store = redis();
+  const session = await store.get<PairingSession>(key(id));
+  if (!session || session.expiresAt <= Date.now() || !tokenMatches(session, token)) return false;
+  session.status = "waiting";
+  session.phoneNumber = phoneNumber;
+  session.codeRequestedAt = Date.now();
+  delete session.qrDataUrl;
+  delete session.qrUpdatedAt;
+  delete session.qrExpiresAt;
+  delete session.pairingCode;
+  delete session.message;
   await savePairingSession(store, id, session);
   return true;
 }
@@ -118,5 +151,9 @@ export async function requestPairingRefresh(id: string, token: string): Promise<
 export async function getPairingRefreshStatus(id: string) {
   const session = await redis().get<PairingSession>(key(id));
   if (!session || session.expiresAt <= Date.now()) return null;
-  return { refreshRequestedAt: session.refreshRequestedAt };
+  return {
+    refreshRequestedAt: session.refreshRequestedAt,
+    codeRequestedAt: session.codeRequestedAt,
+    phoneNumber: session.phoneNumber,
+  };
 }

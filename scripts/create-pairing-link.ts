@@ -12,7 +12,7 @@ async function main() {
   if (process.env.GITHUB_STEP_SUMMARY) {
     await appendFile(
       process.env.GITHUB_STEP_SUMMARY,
-      `# Connect WhatsApp\n\n## [Open the private square QR pairing page →](${session.shareUrl})\n\nOpen this link now, then scan from **WhatsApp → Settings → Linked devices**. The bearer link expires in 10 minutes.\n`,
+      `# Connect WhatsApp\n\n## [Open the private pairing page →](${session.shareUrl})\n\nOpen this link now, then scan the square QR or choose **Use phone number instead**. The bearer link expires in 10 minutes.\n`,
     );
   }
   const noticeUrl = session.shareUrl.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");

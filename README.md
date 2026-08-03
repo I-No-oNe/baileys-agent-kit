@@ -115,6 +115,18 @@ const profile = await executeAction(connection.socket, {
 
 The result can include registration status, temporary profile-picture URL, About/bio text, and business description, category, address, email, websites, and hours. Privacy-hidden or unavailable fields return `null`. WhatsApp does not reliably expose an arbitrary contact's display name. Profile lookup follows `WA_ALLOWED_RECIPIENTS` and does not support bulk number enumeration.
 
+To discover recent chats without slowing every action, request an opt-in bounded prefetch:
+
+```json
+{
+  "action": "list_recent_accounts",
+  "limit": 20,
+  "prefetchSeconds": 5
+}
+```
+
+Only this action enables history synchronization and waits for metadata, for at most 30 seconds. It returns recent contact/group JIDs, available names, last-activity timestamps, and unread counts. The worker keeps at most 500 account metadata entries in memory and does not persist chat history.
+
 ## Agent CLI
 
 The package installs `baileys-agent`, a stable JSON-oriented CLI:
@@ -123,10 +135,11 @@ The package installs `baileys-agent`, a stable JSON-oriented CLI:
 baileys-agent describe
 baileys-agent doctor
 baileys-agent pair --terminal
+baileys-agent pair --phone-number +15551234567
 echo '{"action":"list_groups"}' | baileys-agent run
 ```
 
-`describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a square mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Use `--json` for newline-delimited pairing events. The GitHub Actions workflow uses the private browser link instead of a terminal-shaped QR.
+`describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a square mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Pass `--phone-number` with an international country code to receive WhatsApp's one-time pairing code instead. Use `--json` for newline-delimited pairing events. The GitHub Actions workflow uses the private browser link instead of a terminal-shaped QR.
 
 ## MCP for Claude Code and other agent apps
 
@@ -138,7 +151,7 @@ The `baileys-agent-mcp` stdio server exposes five tools:
 - `whatsapp_pair_status`
 - `whatsapp_execute`
 
-Pairing tools return the current QR as an MCP `image/png` content block, plus its expiry time. Compatible apps can display it directly and request status again after expiry. The MCP process remains alive while the phone scans the QR.
+Pairing tools return the current QR as an MCP `image/png` content block, plus its expiry time. Pass `phoneNumber` to `whatsapp_pair_start` to receive a one-time code instead. Compatible apps can display the image or code and request status until connected. The MCP process remains alive while the phone completes pairing.
 
 This repository includes a project-scoped [.mcp.json](.mcp.json). After publishing, a generic MCP client configuration is:
 
@@ -165,7 +178,7 @@ CLI, GitHub Actions, and MCP failures use the same JSON contract:
   "error": "WhatsApp is not connected to this account.",
   "code": "WHATSAPP_NOT_PAIRED",
   "likelyCause": "No usable linked-device session exists, or WhatsApp logged the session out.",
-  "nextSteps": ["Run 'baileys-agent pair --terminal' or call whatsapp_pair_start."],
+  "nextSteps": ["Run 'baileys-agent pair --terminal', use --phone-number, or call whatsapp_pair_start."],
   "retryable": false
 }
 ```
@@ -181,8 +194,8 @@ Agents should explain `likelyCause` in plain language, follow `nextSteps` in ord
    - `PAIRING_BROKER_URL`: the Vercel deployment URL
    - `PAIRING_BROKER_SECRET`: the same long random secret used by Vercel
    - `WA_ALLOWED_RECIPIENTS`: optional comma-separated phone numbers/JIDs the agent may contact
-5. Run **Pair WhatsApp** from the Actions tab. Open the URL shown by the completed **Create private pairing link** step or its green workflow notice. The square QR page is ready while the next step waits for the scan.
-6. Scan the QR within 10 minutes. The QR is removed as soon as pairing succeeds.
+5. Run **Pair WhatsApp** from the Actions tab. Open the URL shown by the completed **Create private pairing link** step or its green workflow notice. The private page offers a square QR and a **Use phone number instead** option.
+6. Scan the QR or enter the one-time code in WhatsApp within 10 minutes. Pairing details are removed as soon as linking succeeds.
 
 The Actions QR is not replaced on a timer. When it expires, the page hides it and shows **Generate new QR**. A replacement is created only after that button is pressed. CLI and MCP image pairing still rotate expired QR values automatically because those surfaces do not have the browser refresh control.
 
@@ -248,6 +261,8 @@ Runtime package installation is deliberately forbidden. Updating only through lo
 - Baileys signal-key reads and writes are batched into one Upstash request per operation.
 - Send-limit validation and reservation use two Upstash pipeline requests instead of many individual requests.
 - Bursts of Baileys credential updates are coalesced while always flushing the latest state before shutdown.
+- Recent-account metadata is prefetched only for `list_recent_accounts`, with a caller-bounded wait; ordinary actions do not pay this delay.
+- GitHub Actions restores exact-lockfile `node_modules` caches and skips `npm ci` on cache hits.
 - The pairing screen never overlaps polling requests, slows to 10 seconds in background tabs, and stops polling after a terminal result.
 
 ## Port selection
@@ -266,7 +281,7 @@ npm run build
 ## Security notes
 
 - The pairing URL is a bearer secret. It uses a URL fragment so the viewer token is not sent in the initial browser request or ordinary Vercel access logs.
-- Pairing state expires after 10 minutes. The Actions browser keeps each QR for its 60-second validity window, then requires an explicit refresh request. QR data is cleared after connection.
+- Pairing state expires after 10 minutes. The Actions browser keeps each QR for its 60-second validity window, then requires an explicit refresh request. QR and one-time-code data are cleared after connection.
 - GitHub and Vercel share only the pairing broker secret; the browser never receives it.
 - The Action serializes work per `WA_ACCOUNT_ID` to avoid concurrent corruption and duplicate operations.
 - Give any LLM a narrow allowlist of recipients and actions in the calling application. This kit validates shape and limits, but it cannot decide who the model is authorized to message.

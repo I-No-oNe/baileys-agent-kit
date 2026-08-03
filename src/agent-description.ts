@@ -9,9 +9,9 @@ export const agentDescription = {
   commands: {
     describe: "Print this machine-readable description and the complete action schema.",
     doctor: "Check environment, Redis, pairing, and WhatsApp protocol status.",
-    pair: "Link WhatsApp with a terminal QR, protected PNG, or private square-QR browser link.",
+    pair: "Link WhatsApp with a one-time phone code, terminal QR, protected PNG, or private browser link.",
     run: "Execute one validated action from a JSON argument or stdin.",
-    mcp: "Expose describe, doctor, pairing, QR image preview, and execution as MCP tools.",
+    mcp: "Expose describe, doctor, QR or one-time-code pairing, and execution as MCP tools.",
   },
   safety: {
     note: "Baileys is unofficial and cannot be made ban-proof.",

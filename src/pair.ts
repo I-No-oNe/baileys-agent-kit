@@ -10,10 +10,20 @@ export type PairWhatsAppOptions = {
   broker?: PairingBroker;
   brokerSessionId?: string;
   manualQrRefresh?: boolean;
+  phoneNumber?: string;
   timeoutMs?: number;
   onQr?: (qr: string) => void | Promise<void>;
+  onPairingCode?: (code: string) => void | Promise<void>;
   onShareUrl?: (url: string) => void | Promise<void>;
 };
+
+export function normalizePairingPhoneNumber(phoneNumber: string): string {
+  const normalized = phoneNumber.replace(/\D/g, "");
+  if (!/^[1-9]\d{7,14}$/.test(normalized)) {
+    throw new Error("Phone number must include its country code, for example +15551234567.");
+  }
+  return normalized;
+}
 
 async function brokerRequest(broker: PairingBroker, body: unknown) {
   const response = await fetch(`${broker.url.replace(/\/$/, "")}/api/pairing`, {
@@ -63,6 +73,8 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
       let socketGeneration = 0;
       let refreshCheckRunning = false;
       let lastRefreshRequestedAt = 0;
+      let lastCodeRequestedAt = 0;
+      let usingPairingCode = Boolean(options.phoneNumber);
       const finish = (error?: unknown) => {
         if (finished) return;
         finished = true;
@@ -87,7 +99,7 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
         nextSocket.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
           if (finished || generation !== socketGeneration) return;
           try {
-            if (qr) {
+            if (qr && !usingPairingCode) {
               await Promise.all([
                 brokerId && options.broker
                   ? brokerRequest(options.broker, { operation: "update", id: brokerId, qr })
@@ -114,6 +126,18 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
             finish(error);
           }
         });
+        if (options.phoneNumber) void requestCode(nextSocket, options.phoneNumber).catch(finish);
+      };
+
+      const requestCode = async (targetSocket: ReturnType<typeof makeWASocket>, phoneNumber: string) => {
+        usingPairingCode = true;
+        const code = await targetSocket.requestPairingCode(normalizePairingPhoneNumber(phoneNumber));
+        await Promise.all([
+          brokerId && options.broker
+            ? brokerRequest(options.broker, { operation: "update", id: brokerId, pairingCode: code })
+            : undefined,
+          options.onPairingCode?.(code),
+        ]);
       };
 
       const restartForFreshQr = async () => {
@@ -132,7 +156,18 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
           const requestedAt = Number(status.refreshRequestedAt ?? 0);
           if (requestedAt > lastRefreshRequestedAt) {
             lastRefreshRequestedAt = requestedAt;
+            usingPairingCode = false;
             await restartForFreshQr();
+          }
+          const codeRequestedAt = Number(status.codeRequestedAt ?? 0);
+          const phoneNumber = typeof status.phoneNumber === "string" ? status.phoneNumber : undefined;
+          if (codeRequestedAt > lastCodeRequestedAt && phoneNumber && socket) {
+            lastCodeRequestedAt = codeRequestedAt;
+            try {
+              await requestCode(socket, phoneNumber);
+            } catch (error) {
+              finish(error);
+            }
           }
         } catch {
           // A transient broker read should not terminate an otherwise usable pairing session.

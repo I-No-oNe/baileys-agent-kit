@@ -25,9 +25,14 @@ export async function runAgentAction(input: unknown, accountId = process.env.WA_
   try {
     await riskGuard.reserve(action);
     reserved = true;
-    const connection = await connectWhatsApp();
+    const connection = await connectWhatsApp({
+      accountId,
+      ...(action.action === "list_recent_accounts"
+        ? { prefetchRecentAccountsMs: (action.prefetchSeconds ?? 5) * 1_000 }
+        : {}),
+    });
     close = connection.close;
-    const result = await executeAction(connection.socket, action);
+    const result = await executeAction(connection.socket, action, { recentAccounts: connection.recentAccounts });
     await riskGuard.recordSuccess();
     return result;
   } catch (error) {

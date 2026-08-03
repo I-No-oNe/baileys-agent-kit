@@ -85,6 +85,7 @@ function targets(action: AgentAction): string[] {
       return [toJid(action.group)];
     case "create_group":
       return action.participants.map(toJid);
+    case "list_recent_accounts":
     case "list_groups":
       return [];
   }

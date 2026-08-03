@@ -4,6 +4,7 @@ import {
   brokerAuthorized,
   createPairingSession,
   getPairingRefreshStatus,
+  requestPairingCode,
   requestPairingRefresh,
   updatePairingSession,
   viewPairingSession,
@@ -13,9 +14,10 @@ export const runtime = "nodejs";
 
 const requestSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("create") }),
-  z.object({ operation: z.literal("update"), id: z.uuid(), qr: z.string().min(1).optional(), status: z.enum(["waiting", "qr", "connected", "failed"]).optional(), message: z.string().max(500).optional() }),
+  z.object({ operation: z.literal("update"), id: z.uuid(), qr: z.string().min(1).optional(), pairingCode: z.string().min(1).max(20).optional(), status: z.enum(["waiting", "qr", "code", "connected", "failed"]).optional(), message: z.string().max(500).optional() }),
   z.object({ operation: z.literal("view"), id: z.uuid(), token: z.string().min(32) }),
   z.object({ operation: z.literal("refresh"), id: z.uuid(), token: z.string().min(32) }),
+  z.object({ operation: z.literal("code"), id: z.uuid(), token: z.string().min(32), phoneNumber: z.string().regex(/^[1-9]\d{7,14}$/) }),
   z.object({ operation: z.literal("status"), id: z.uuid() }),
 ]);
 
@@ -32,6 +34,12 @@ export async function POST(request: Request) {
 
   if (parsed.data.operation === "refresh") {
     return await requestPairingRefresh(parsed.data.id, parsed.data.token)
+      ? NextResponse.json({ ok: true })
+      : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
+  }
+  if (parsed.data.operation === "code") {
+    const requested = await requestPairingCode(parsed.data.id, parsed.data.token, parsed.data.phoneNumber);
+    return requested
       ? NextResponse.json({ ok: true })
       : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
   }

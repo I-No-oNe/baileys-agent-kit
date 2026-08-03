@@ -15,8 +15,9 @@ import { runAgentAction } from "./runner";
 import packageJson from "../package.json";
 
 type PairingState = {
-  status: "waiting" | "qr" | "connected" | "failed";
+  status: "waiting" | "qr" | "code" | "connected" | "failed";
   qr?: string;
+  pairingCode?: string;
   qrExpiresAt?: number;
   shareUrl?: string;
   error?: string;
@@ -33,7 +34,7 @@ function newPairingState(): PairingState {
   return { status: "waiting", changed, notify };
 }
 
-async function startPairing(accountId: string) {
+async function startPairing(accountId: string, phoneNumber?: string) {
   const existing = pairingStates.get(accountId);
   if (existing && existing.status !== "failed") return existing;
 
@@ -42,6 +43,7 @@ async function startPairing(accountId: string) {
   try {
     const pairing = pairWhatsApp({
       accountId,
+      phoneNumber,
       broker: pairingBrokerFromEnv(),
       onShareUrl: (url) => {
         state.shareUrl = url;
@@ -53,11 +55,17 @@ async function startPairing(accountId: string) {
         state.qrExpiresAt = Date.now() + PAIRING_QR_TTL_MS;
         state.notify();
       },
+      onPairingCode: (code) => {
+        state.status = "code";
+        state.pairingCode = code;
+        state.notify();
+      },
     });
     void pairing.then(() => {
       state.status = "connected";
       state.qr = undefined;
       state.qrExpiresAt = undefined;
+      state.pairingCode = undefined;
       state.notify();
     }).catch((error) => {
       state.status = "failed";
@@ -92,6 +100,7 @@ async function pairingResult(accountId: string, state: PairingState | undefined)
     status: state.status === "qr" && !qrCurrent ? "waiting" : state.status,
     qrExpiresAt: qrCurrent ? new Date(qrExpiresAt).toISOString() : undefined,
     shareUrl: state.shareUrl,
+    pairingCode: state.pairingCode,
     error: state.error,
     failure: state.failure,
   };
@@ -120,10 +129,10 @@ server.registerTool("whatsapp_doctor", {
 });
 
 server.registerTool("whatsapp_pair_start", {
-  description: "Start or resume WhatsApp device pairing and return the QR as a previewable PNG image.",
-  inputSchema: z.object({ accountId: z.string().min(1).optional() }),
+  description: "Start or resume WhatsApp pairing. Returns a QR image by default, or a one-time code when phoneNumber is provided.",
+  inputSchema: z.object({ accountId: z.string().min(1).optional(), phoneNumber: z.string().min(8).optional().describe("International phone number with country code.") }),
   annotations: { readOnlyHint: false, openWorldHint: true },
-}, async ({ accountId = "default" }) => pairingResult(accountId, await startPairing(accountId)));
+}, async ({ accountId = "default", phoneNumber }) => pairingResult(accountId, await startPairing(accountId, phoneNumber)));
 
 server.registerTool("whatsapp_pair_status", {
   description: "Get the latest pairing QR image or connection result for an active pairing session.",

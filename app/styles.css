@@ -30,3 +30,10 @@ footer { text-align: center; font-size: 12px; }
 @keyframes reveal { from { opacity: 0; transform: scale(.96); } }
 @media (max-width: 760px) { main { width: min(100% - 24px, 520px); padding: 24px 0; } .card { grid-template-columns: 1fr; gap: 36px; padding: 34px 22px; border-radius: 24px; } h1 { font-size: 42px; } ol { font-size: 15px; } .qrPanel { grid-row: 1; } .qrPanel img, .qrPlaceholder { width: min(100%, 280px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+.pairingCode { display: grid; place-items: center; width: min(100%, 340px); min-height: 170px; padding: 28px; border-radius: 24px; color: #062313; background: white; font: 800 clamp(28px, 6vw, 42px)/1 var(--font-mono), monospace; letter-spacing: .16em; overflow-wrap: anywhere; text-align: center; }
+.status.code { color: #87efa9; border-color: rgba(37,211,102,.3); background: rgba(37,211,102,.08); }
+.phoneForm { width: min(100%, 340px); display: grid; gap: 10px; }
+.phoneForm label { color: var(--muted); font-size: 12px; text-align: left; }
+.phoneForm input { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; color: var(--ink); background: rgba(0,0,0,.22); font: 16px/1 var(--font-sans), sans-serif; }
+.phoneForm input:focus { outline: 3px solid rgba(37,211,102,.3); border-color: var(--green); }
+.phoneForm p { margin: 0; color: #ffaaa3; font-size: 12px; text-align: left; }

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.6](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.5...v0.1.6) (2026-08-03)
+
+### Features
+
+* add QR-alternative one-time-code pairing to the private page, CLI, MCP, and core API
+* add bounded, opt-in recent-account metadata prefetching
+
+### Performance
+
+* skip dependency installation in GitHub Actions on exact-lockfile cache hits
+
+## [0.1.5](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.4...v0.1.5) (2026-08-03)
+
+### Features
+
+* add replies, media albums, bounded message receiving, and profile lookup
+* add private square-QR pairing links with manual refresh
+
 ## [0.1.4](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.3...v0.1.4) (2026-08-02)
 
 

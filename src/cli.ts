@@ -57,6 +57,7 @@ async function run() {
     try {
       await pairWhatsApp({
         accountId,
+        phoneNumber: flagValue("--phone-number"),
         broker: pairingBrokerFromEnv(),
         onShareUrl: (url) => {
           emit({ type: "pairing_url", url });
@@ -72,6 +73,10 @@ async function run() {
             if (terminal) qrcodeTerminal.generate(qr, { small: true });
           }
         },
+        onPairingCode: (code) => {
+          emit({ type: "pairing_code", code });
+          if (!json) console.log(`WhatsApp one-time pairing code: ${code}`);
+        },
       });
       emit({ type: "connected", accountId });
       if (!json) console.log("WhatsApp linked. Session saved to Upstash.");
@@ -86,7 +91,7 @@ async function run() {
 Usage:
   baileys-agent describe
   baileys-agent doctor [--account ID]
-  baileys-agent pair [--account ID] [--terminal] [--qr-file PATH] [--json]
+  baileys-agent pair [--account ID] [--phone-number +15551234567] [--terminal] [--qr-file PATH] [--json]
   baileys-agent run [--account ID] --action '{"action":"list_groups"}'
   echo '{"action":"list_groups"}' | baileys-agent run
 

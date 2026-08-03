@@ -91,7 +91,7 @@ export function explainError(error: unknown): ExplainedFailure {
       "WHATSAPP_NOT_PAIRED",
       "WhatsApp is not connected to this account.",
       "No usable linked-device session exists, or WhatsApp logged the session out.",
-      ["Run 'baileys-agent pair --terminal' or call whatsapp_pair_start.", "Scan the new QR, wait for connected status, then retry the action."],
+      ["Run 'baileys-agent pair --terminal', use --phone-number, or call whatsapp_pair_start.", "Complete QR or one-time-code pairing, wait for connected status, then retry the action."],
       false,
       details,
     );
