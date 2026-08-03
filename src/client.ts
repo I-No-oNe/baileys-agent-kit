@@ -6,6 +6,7 @@ import makeWASocket, {
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { createAuthState } from "./auth";
+import { createBaileysLogger } from "./baileys-logger";
 import { createCoalescedSaver } from "./coalesced-saver";
 import { createRecentAccountsCollector, type RecentAccount } from "./recent-accounts";
 
@@ -27,10 +28,12 @@ export async function connectWhatsApp(options: { accountId?: string; attempts?: 
   const { version, isLatest } = await fetchLatestBaileysVersion();
   if (!isLatest) console.warn("Could not fetch the latest WhatsApp protocol version; using Baileys' bundled fallback.");
   const credentialSaver = createCoalescedSaver(saveCreds);
+  const logger = createBaileysLogger();
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const socket = makeWASocket({
       auth: state,
+      logger,
       version,
       markOnlineOnConnect: false,
       syncFullHistory: shouldPrefetchRecentAccounts,

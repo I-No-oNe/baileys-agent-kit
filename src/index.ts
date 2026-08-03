@@ -1,4 +1,5 @@
 export { actionSchema, llmTool, type AgentAction } from "./actions";
+export { publishActionResult } from "./action-result";
 export { connectWhatsApp } from "./client";
 export { executeAction } from "./execute";
 export { explainError, type ExplainedFailure } from "./explain-error";

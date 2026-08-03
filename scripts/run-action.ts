@@ -1,4 +1,5 @@
 import "../src/load-local-env";
+import { publishActionResult } from "../src/action-result";
 import { requiredEnv } from "../src/env";
 import { runAgentAction } from "../src/runner";
 import { explainError } from "../src/explain-error";
@@ -10,10 +11,10 @@ async function main() {
       ? { afterReserve: async () => { await saveGitHubState({}, true); } }
       : {}),
   });
-  console.log(JSON.stringify({ ok: true, result }));
+  await publishActionResult({ ok: true, result });
 }
 
-main().catch((error) => {
-  console.error(JSON.stringify(explainError(error)));
-  process.exit(1);
+main().catch(async (error) => {
+  await publishActionResult(explainError(error));
+  process.exitCode = 1;
 });

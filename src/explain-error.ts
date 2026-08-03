@@ -66,11 +66,11 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
-  if (/^WA_[A-Z_]+ must be an integer|WA_STORAGE_BACKEND must be|Upstash Redis URL and token must be configured together/.test(details)) {
+  if (/^WA_[A-Z_]+ must be|WA_STORAGE_BACKEND must be|Upstash Redis URL and token must be configured together/.test(details)) {
     return failure(
       "INVALID_CONFIGURATION",
       "A WhatsApp safety setting has an invalid value.",
-      "A WA_* limit is outside its supported range or is not a whole number.",
+      "A WA_* setting contains a value outside its documented choices or range.",
       ["Correct the environment variable shown in details.", "Run 'baileys-agent doctor' before retrying."],
       false,
       details,

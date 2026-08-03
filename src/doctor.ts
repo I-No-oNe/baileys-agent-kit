@@ -2,6 +2,7 @@ import { Redis } from "@upstash/redis";
 import { randomUUID } from "node:crypto";
 import { DEFAULT_CONNECTION_CONFIG, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import { createAuthState, storageBackendFromEnv, type StorageBackend } from "./auth";
+import { baileysLogLevel } from "./baileys-logger";
 import { explainError, type ExplainedFailure } from "./explain-error";
 import { localStateDirectory, probeLocalStateDirectory } from "./local-files";
 
@@ -42,6 +43,12 @@ export async function diagnoseWhatsApp(accountId = process.env.WA_ACCOUNT_ID ?? 
   let redisStatus: DoctorResult["redis"] = "not_configured";
   let backend: StorageBackend = "file";
   let storageStatus: DoctorResult["sessionStorage"]["status"] = "error";
+
+  try {
+    baileysLogLevel();
+  } catch (error) {
+    problems.push(error instanceof Error ? error.message : String(error));
+  }
 
   try {
     const latest = await fetchLatestBaileysVersion();

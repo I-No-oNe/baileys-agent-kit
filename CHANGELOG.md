@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+* silence Baileys protocol logs by default and publish Actions results outside raw logs
+
+### Documentation
+
+* explain billed wait windows, per-account Actions serialization, and the single-socket backend pattern
+
 ## [0.1.9](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.8...v0.1.9) (2026-08-03)
 
 ### Bug Fixes

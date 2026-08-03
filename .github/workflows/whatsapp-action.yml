@@ -22,6 +22,8 @@ concurrency:
 
 jobs:
   run:
+    outputs:
+      result_json: ${{ steps.action.outputs.result_json }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -46,7 +48,8 @@ jobs:
         name: Restore encrypted WhatsApp state
         if: env.WA_STATE_ENCRYPTION_KEY != ''
         run: npm run wa:state -- pull
-      - name: Run WhatsApp action
+      - id: action
+        name: Run WhatsApp action
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
@@ -59,7 +62,17 @@ jobs:
           WA_FAILURE_THRESHOLD: ${{ vars.WA_FAILURE_THRESHOLD || '3' }}
           WA_CIRCUIT_BREAKER_SECONDS: ${{ vars.WA_CIRCUIT_BREAKER_SECONDS || '1800' }}
           WA_ENABLE_GROUP_ADMIN: ${{ vars.WA_ENABLE_GROUP_ADMIN || 'false' }}
+          WA_ACTION_RESULT_PATH: ${{ runner.temp }}/baileys-agent-result.json
+          WA_ACTION_RESULT_DETAILS: ${{ github.event.repository.private && 'true' || 'false' }}
         run: npm run wa:run
+      - name: Upload private structured result
+        if: always() && github.event.repository.private
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/baileys-agent-result.json
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Save encrypted WhatsApp state
         if: always() && env.WA_STATE_ENCRYPTION_KEY != '' && steps.state.outcome == 'success'
         run: npm run wa:state -- push

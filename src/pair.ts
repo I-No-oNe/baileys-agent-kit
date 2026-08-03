@@ -1,5 +1,6 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import { createAuthState, storageBackendFromEnv } from "./auth";
+import { createBaileysLogger } from "./baileys-logger";
 import { createCoalescedSaver } from "./coalesced-saver";
 import { acquireLocalAccountLock } from "./local-files";
 import { prefersPairingCode } from "./local-region";
@@ -92,6 +93,7 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
     ? await createBrokerPairingSession(options.broker)
     : undefined;
   const brokerId = options.brokerSessionId ?? brokerSession?.id;
+  const logger = createBaileysLogger();
   if (brokerSession && options.onShareUrl) await options.onShareUrl(brokerSession.shareUrl);
 
   let finished = false;
@@ -120,6 +122,7 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
         const generation = ++socketGeneration;
         const nextSocket = makeWASocket({
           auth: state,
+          logger,
           version,
           markOnlineOnConnect: false,
           syncFullHistory: false,

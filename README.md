@@ -260,7 +260,56 @@ gh api repos/OWNER/REPO/dispatches --input - <<'JSON'
 JSON
 ```
 
-The workflow prints exactly one JSON result object after a successful action. A caller that needs synchronous results should poll the workflow run and read its logs. GitHub Actions is intentionally an on-demand executor, not a real-time bot host. `wait_for_message` receives only during its bounded action window; continuous inbound webhooks require a persistent worker.
+Baileys protocol logging is silent by default, so stdout stays machine-readable. Set `WA_BAILEYS_LOG_LEVEL=error` or `debug` temporarily when diagnosing the protocol; do not leave debug logging enabled because it is noisy and may expose message metadata.
+
+In a private repository, the workflow publishes each success or structured failure through four channels:
+
+- a compact `Baileys Agent Result` check annotation, available through the Checks API while later workflow steps are still running;
+- the action step's `result_json` output for downstream workflow steps;
+- the run's Markdown summary for humans;
+- a repository-scoped `whatsapp-result-RUN_ID-ATTEMPT` JSON artifact retained for one day.
+
+The artifact contains message content and must be treated as private. It never contains WhatsApp authentication state. Detailed annotations, summaries, and artifacts are disabled automatically in public repositories; public Actions logs are themselves public, so do not process sensitive WhatsApp content there. To read a small private-repository result before the run finishes:
+
+```bash
+run_id=123456789
+job_id="$(gh api repos/OWNER/REPO/actions/runs/$run_id/jobs --jq '.jobs[] | select(.name == "run") | .id')"
+gh api "repos/OWNER/REPO/check-runs/$job_id/annotations" \
+  --jq '.[] | select(.title == "Baileys Agent Result") | .message | fromjson'
+```
+
+For a large result, download the artifact after its upload step appears:
+
+```bash
+gh run download "$run_id" \
+  --repo OWNER/REPO \
+  --name "whatsapp-result-$run_id-1"
+```
+
+GitHub Actions is intentionally an on-demand executor, not a real-time bot host. Each `wait_for_message` occupies a billed runner for its whole bounded window, and the per-account concurrency group deliberately blocks a second Actions socket from racing the same authentication/safety state. Splitting the concurrency group would trade latency for session corruption and duplicate-send risk.
+
+For a conversational backend, create one connection per WhatsApp account and reuse that socket. A wait and a send can coexist on the same socket:
+
+```ts
+import { connectWhatsApp, executeAction } from "baileys-agent-kit";
+
+const connection = await connectWhatsApp();
+const incoming = executeAction(connection.socket, {
+  action: "wait_for_message",
+  timeoutSeconds: 300,
+});
+
+await executeAction(connection.socket, {
+  action: "send_text",
+  to: "+972501234567",
+  text: "The listener remains active while this sends.",
+});
+
+console.log(await incoming);
+await connection.close();
+```
+
+`wait_for_message` is a bounded one-shot primitive, not a subscription service. A production chat backend should keep the socket alive, consume Baileys message events continuously, and serialize outbound mutations through an internal queue. Calls to low-level `executeAction` do not apply `runAgentAction`'s default risk guard, so the backend must apply equivalent recipient allowlists, rate limits, and circuit breaking.
 
 ## Risk controls
 
