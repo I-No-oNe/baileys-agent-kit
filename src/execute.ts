@@ -30,6 +30,17 @@ export async function executeAction(socket: WASocket, input: unknown): Promise<u
       return messageResult(await socket.sendMessage(toJid(action.to), { location: { degreesLatitude: action.latitude, degreesLongitude: action.longitude, name: action.name, address: action.address } }));
     case "send_poll":
       return messageResult(await socket.sendMessage(toJid(action.to), { poll: { name: action.question, values: action.options, selectableCount: action.selectableCount ?? 1 } }));
+    case "reply_text":
+      return messageResult(await socket.sendMessage(
+        toJid(action.recipient),
+        { text: action.text },
+        {
+          quoted: {
+            key: { ...key(action), fromMe: action.fromMe ?? false },
+            message: { conversation: action.quotedText },
+          },
+        },
+      ));
     case "react":
       return messageResult(await socket.sendMessage(toJid(action.recipient), { react: { text: action.emoji, key: key(action) } }));
     case "edit_text":

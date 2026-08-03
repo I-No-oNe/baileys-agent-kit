@@ -86,6 +86,19 @@ test("limits repeated sends to a recipient", async () => {
   await assert.rejects(guard.reserve(action), /limit reached for/);
 });
 
+test("applies send limits to replies", async () => {
+  const guard = new RiskGuard(memoryStore(), "replies", config);
+  const action = {
+    action: "reply_text",
+    recipient: "+15551234567",
+    messageId: "message-1",
+    quotedText: "Original",
+    text: "Reply",
+  } as const;
+  await guard.reserve(action);
+  await assert.rejects(guard.reserve(action), /limit reached for/);
+});
+
 test("limits total and unique daily recipients", async () => {
   const uniqueGuard = new RiskGuard(memoryStore(), "unique", {
     ...config,

@@ -22,6 +22,42 @@ test("maps a simple LLM text action to Baileys", async () => {
   assert.deepEqual(result, { messageId: "message-1", recipient: "972501234567@s.whatsapp.net" });
 });
 
+test("maps a text reply to Baileys quoted-message options", async () => {
+  const calls: unknown[][] = [];
+  const socket = {
+    async sendMessage(...args: unknown[]) {
+      calls.push(args);
+      return { key: { id: "reply-1", remoteJid: String(args[0]) } };
+    },
+  } as unknown as WASocket;
+
+  const result = await executeAction(socket, {
+    action: "reply_text",
+    recipient: "120363000000@g.us",
+    messageId: "quoted-message-1",
+    participant: "+1 (555) 123-4567",
+    quotedText: "Original message",
+    text: "Reply",
+  });
+
+  assert.deepEqual(calls, [[
+    "120363000000@g.us",
+    { text: "Reply" },
+    {
+      quoted: {
+        key: {
+          remoteJid: "120363000000@g.us",
+          id: "quoted-message-1",
+          fromMe: false,
+          participant: "15551234567@s.whatsapp.net",
+        },
+        message: { conversation: "Original message" },
+      },
+    },
+  ]]);
+  assert.deepEqual(result, { messageId: "reply-1", recipient: "120363000000@g.us" });
+});
+
 test("maps group participant updates and normalizes phone numbers", async () => {
   const calls: unknown[][] = [];
   const socket = {

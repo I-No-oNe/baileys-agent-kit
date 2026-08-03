@@ -8,6 +8,7 @@ const SEND_ACTIONS = new Set<AgentAction["action"]>([
   "send_document",
   "send_location",
   "send_poll",
+  "reply_text",
 ]);
 const GROUP_ADMIN_ACTIONS = new Set<AgentAction["action"]>([
   "create_group",
@@ -65,6 +66,7 @@ function targets(action: AgentAction): string[] {
     case "send_location":
     case "send_poll":
       return [toJid(action.to)];
+    case "reply_text":
     case "react":
     case "edit_text":
     case "delete_message":

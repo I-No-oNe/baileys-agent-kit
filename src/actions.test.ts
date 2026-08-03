@@ -10,6 +10,24 @@ test("accepts a valid text action", () => {
   });
 });
 
+test("accepts a text reply with quoted message context", () => {
+  assert.deepEqual(actionSchema.parse({
+    action: "reply_text",
+    recipient: "120363000000@g.us",
+    messageId: "quoted-message-1",
+    participant: "+15551234567",
+    quotedText: "Original message",
+    text: "Reply",
+  }), {
+    action: "reply_text",
+    recipient: "120363000000@g.us",
+    messageId: "quoted-message-1",
+    participant: "+15551234567",
+    quotedText: "Original message",
+    text: "Reply",
+  });
+});
+
 test("rejects unsupported actions and unsafe oversized text", () => {
   assert.equal(actionSchema.safeParse({ action: "run_code", code: "anything" }).success, false);
   assert.equal(actionSchema.safeParse({ action: "send_text", to: "1", text: "x".repeat(5001) }).success, false);

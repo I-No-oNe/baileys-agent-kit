@@ -46,7 +46,7 @@ Nothing requires an `I-No-oNe` deployment. The developer forks or copies this pr
 ## Included actions
 
 - `send_text`, `send_image`, `send_document`, `send_location`, `send_poll`
-- `react`, `edit_text`, `delete_message`, `mark_read`
+- `reply_text`, `react`, `edit_text`, `delete_message`, `mark_read`
 - `list_groups`, `get_group`, `create_group`
 - `update_group_subject`, `update_group_participants`
 
@@ -63,6 +63,18 @@ const result = await executeAction(connection.socket, {
   text: "Hello from an agent",
 });
 await connection.close();
+```
+
+Reply to a text message using its ID and original text. Include `participant` when replying in a group. Set `fromMe: true` when quoting a message sent by the linked account:
+
+```ts
+await executeAction(connection.socket, {
+  action: "reply_text",
+  recipient: "+972501234567",
+  messageId: "3EB0...",
+  quotedText: "Original message",
+  text: "Reply from an agent",
+});
 ```
 
 ## Agent CLI
