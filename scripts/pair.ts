@@ -1,3 +1,4 @@
+import "../src/load-local-env";
 import { appendFile } from "node:fs/promises";
 import { explainError } from "../src/explain-error";
 import { pairWhatsApp, pairingBrokerFromEnv } from "../src/pair";

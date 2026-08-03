@@ -136,7 +136,8 @@ baileys-agent describe
 baileys-agent doctor
 baileys-agent pair --terminal
 baileys-agent pair --phone-number +15551234567
-echo '{"action":"list_groups"}' | baileys-agent run
+baileys-agent recent-accounts
+baileys-agent run --action '{"action":"list_groups"}'
 ```
 
 `describe` emits the complete action schema. `pair` renders an ANSI QR in interactive terminals and also writes a square mode-`0600` PNG to the system temporary directory. Its printed absolute path and Markdown preview can be opened by shell-based agent applications. Pass `--phone-number` with an international country code to receive WhatsApp's one-time pairing code instead. Use `--json` for newline-delimited pairing events. The GitHub Actions workflow uses the private browser link instead of a terminal-shaped QR.
@@ -200,6 +201,16 @@ Agents should explain `likelyCause` in plain language, follow `nextSteps` in ord
 The Actions QR is not replaced on a timer. When it expires, the page hides it and shows **Generate new QR**. A replacement is created only after that button is pressed. CLI and MCP image pairing still rotate expired QR values automatically because those surfaces do not have the browser refresh control.
 
 Generate the broker secret locally with `openssl rand -base64 48`.
+
+For local CLI or MCP use, copy `.env.example` to `.env.local` and fill in the Upstash REST URL and a read-write REST token. Local entrypoints load `.env.local` and `.env` automatically. Then verify storage before pairing or sending:
+
+```bash
+baileys-agent doctor
+baileys-agent pair --terminal
+baileys-agent recent-accounts
+```
+
+Doctor performs an expiring write/delete probe. A read-only token reports `SESSION_STORAGE_READ_ONLY`; do not pair until Redis reports `ok`.
 
 ## Dispatch from code or an LLM
 

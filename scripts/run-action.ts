@@ -1,3 +1,4 @@
+import "../src/load-local-env";
 import { requiredEnv } from "../src/env";
 import { runAgentAction } from "../src/runner";
 import { explainError } from "../src/explain-error";

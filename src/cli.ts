@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "./load-local-env";
 import { chmod, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -41,6 +42,15 @@ async function run() {
     const source = actionArgument ?? await stdin();
     if (!source) throw new Error("Provide action JSON with --action, a positional argument, or stdin.");
     const result = await runAgentAction(JSON.parse(source), flagValue("--account"));
+    console.log(JSON.stringify({ ok: true, result }));
+    return;
+  }
+  if (command === "recent-accounts") {
+    const result = await runAgentAction({
+      action: "list_recent_accounts",
+      limit: Number(flagValue("--limit") ?? 20),
+      prefetchSeconds: Number(flagValue("--prefetch-seconds") ?? 5),
+    }, flagValue("--account"));
     console.log(JSON.stringify({ ok: true, result }));
     return;
   }
@@ -92,8 +102,8 @@ Usage:
   baileys-agent describe
   baileys-agent doctor [--account ID]
   baileys-agent pair [--account ID] [--phone-number +15551234567] [--terminal] [--qr-file PATH] [--json]
+  baileys-agent recent-accounts [--account ID] [--limit 20] [--prefetch-seconds 5]
   baileys-agent run [--account ID] --action '{"action":"list_groups"}'
-  echo '{"action":"list_groups"}' | baileys-agent run
 
 Use 'baileys-agent describe' for the complete machine-readable action schema.`);
 }

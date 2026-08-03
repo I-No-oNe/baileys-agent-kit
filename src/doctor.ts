@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { randomUUID } from "node:crypto";
 import { DEFAULT_CONNECTION_CONFIG, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import { createUpstashAuthState } from "./auth/upstash";
 import { explainError, type ExplainedFailure } from "./explain-error";
@@ -7,7 +8,7 @@ export type DoctorResult = {
   ok: boolean;
   node: string;
   environment: Record<string, boolean>;
-  redis: "ok" | "not_configured" | "error";
+  redis: "ok" | "not_configured" | "read_only" | "error";
   whatsapp: {
     paired: boolean | null;
     bundledProtocol: string;
@@ -53,10 +54,24 @@ export async function diagnoseWhatsApp(accountId = process.env.WA_ACCOUNT_ID ?? 
     try {
       const redis = new Redis({ url: redisUrl, token: redisToken });
       await redis.ping();
-      redisStatus = "ok";
       const { state } = await createUpstashAuthState(accountId);
       paired = Boolean(state.creds.registered || state.creds.me);
       if (!paired) problems.push("WhatsApp is not paired.");
+      const probeKey = `baileys_agent:${accountId}:doctor:${randomUUID()}`;
+      try {
+        await redis.set(probeKey, "ok", { ex: 60 });
+        await redis.del(probeKey);
+        redisStatus = "ok";
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/read.?only|write.*not.*allowed|permission.*write|NOPERM/i.test(message)) {
+          redisStatus = "read_only";
+          problems.push("Upstash Redis session storage is read-only.");
+        } else {
+          redisStatus = "error";
+          problems.push("Could not write to the Upstash Redis session.");
+        }
+      }
     } catch {
       redisStatus = "error";
       problems.push("Could not read the Upstash Redis session.");

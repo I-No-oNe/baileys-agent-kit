@@ -1,6 +1,6 @@
 {
   "name": "baileys-agent-kit",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "LLM-friendly WhatsApp automation on Baileys and GitHub Actions",
   "license": "MIT",
   "repository": {
@@ -50,6 +50,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@upstash/redis": "^1.38.0",
     "@whiskeysockets/baileys": "7.0.0-rc14",
+    "dotenv": "^17.4.2",
     "next": "^16.2.12",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",

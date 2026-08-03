@@ -47,6 +47,20 @@ test("creates a reusable private broker session for GitHub Actions", async () =>
   }
 });
 
+test("reports an empty broker 500 as a broker failure, not invalid JSON", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(null, { status: 500 })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      createBrokerPairingSession({ url: "https://pair.example.com", secret: "broker-secret" }),
+      /Pairing broker returned HTTP 500/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("keeps a QR visible for its full native validity window", () => {
   assert.equal(PAIRING_QR_TTL_MS, 60_000);
 });

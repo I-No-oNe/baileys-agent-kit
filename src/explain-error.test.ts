@@ -19,6 +19,13 @@ test("explains missing configuration with a concrete next step", () => {
   assert.match(explanation.nextSteps.join(" "), /doctor/);
 });
 
+test("distinguishes a read-only session token from an unavailable store", () => {
+  const result = explainError(new Error("Upstash Redis session storage is read-only: ERR read only token"));
+  assert.equal(result.code, "SESSION_STORAGE_READ_ONLY");
+  assert.equal(result.retryable, false);
+  assert.match(result.nextSteps[0], /read-write Upstash token/);
+});
+
 test("explains safety and transient failures without blind retries", () => {
   const blocked = explainError(new Error("Recipient 1@s.whatsapp.net is not in WA_ALLOWED_RECIPIENTS."));
   assert.equal(blocked.code, "SAFETY_POLICY_BLOCKED");

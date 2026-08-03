@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.7](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.6...v0.1.7) (2026-08-03)
+
+### Bug Fixes
+
+* verify Redis write access in doctor and return structured pairing API failures
+* preserve credentials before pairing reconnects and classify broker HTTP failures correctly
+
+### Features
+
+* load local environment files in CLI, MCP, and scripts
+* add the `recent-accounts` CLI command
+
 ## [0.1.6](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.5...v0.1.6) (2026-08-03)
 
 ### Features

@@ -96,6 +96,16 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
+  if (/Upstash Redis session storage is read-only/i.test(details)) {
+    return failure(
+      "SESSION_STORAGE_READ_ONLY",
+      "The WhatsApp session store cannot save changes.",
+      "The configured Upstash token permits reads but not writes, so pairing and credential updates cannot persist.",
+      ["Replace the read-only token with a read-write Upstash token in this runtime.", "Run 'baileys-agent doctor' and continue only after Redis reports ok."],
+      false,
+      details,
+    );
+  }
   if (/No pairing session exists/i.test(details)) {
     return failure(
       "PAIRING_NOT_STARTED",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { explainError } from "../../../src/explain-error";
 import {
   brokerAuthorized,
   createPairingSession,
@@ -22,43 +23,47 @@ const requestSchema = z.discriminatedUnion("operation", [
 ]);
 
 export async function POST(request: Request) {
-  const parsed = requestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Invalid pairing request." }, { status: 400 });
+  try {
+    const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Invalid pairing request." }, { status: 400 });
 
-  if (parsed.data.operation === "view") {
-    const session = await viewPairingSession(parsed.data.id, parsed.data.token);
-    return session
-      ? NextResponse.json(session, { headers: { "Cache-Control": "no-store" } })
-      : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
-  }
+    if (parsed.data.operation === "view") {
+      const session = await viewPairingSession(parsed.data.id, parsed.data.token);
+      return session
+        ? NextResponse.json(session, { headers: { "Cache-Control": "no-store" } })
+        : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
+    }
 
-  if (parsed.data.operation === "refresh") {
-    return await requestPairingRefresh(parsed.data.id, parsed.data.token)
-      ? NextResponse.json({ ok: true })
-      : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
-  }
-  if (parsed.data.operation === "code") {
-    const requested = await requestPairingCode(parsed.data.id, parsed.data.token, parsed.data.phoneNumber);
-    return requested
-      ? NextResponse.json({ ok: true })
-      : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
-  }
+    if (parsed.data.operation === "refresh") {
+      return await requestPairingRefresh(parsed.data.id, parsed.data.token)
+        ? NextResponse.json({ ok: true })
+        : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
+    }
+    if (parsed.data.operation === "code") {
+      const requested = await requestPairingCode(parsed.data.id, parsed.data.token, parsed.data.phoneNumber);
+      return requested
+        ? NextResponse.json({ ok: true })
+        : NextResponse.json({ error: "Invalid or expired pairing link." }, { status: 404 });
+    }
 
-  if (!brokerAuthorized(request.headers.get("authorization"))) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+    if (!brokerAuthorized(request.headers.get("authorization"))) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
 
-  if (parsed.data.operation === "create") {
-    return NextResponse.json(await createPairingSession(new URL(request.url).origin));
-  }
+    if (parsed.data.operation === "create") {
+      return NextResponse.json(await createPairingSession(new URL(request.url).origin));
+    }
 
-  if (parsed.data.operation === "status") {
-    const status = await getPairingRefreshStatus(parsed.data.id);
-    return status
-      ? NextResponse.json(status)
-      : NextResponse.json({ error: "Pairing session expired or does not exist." }, { status: 404 });
-  }
+    if (parsed.data.operation === "status") {
+      const status = await getPairingRefreshStatus(parsed.data.id);
+      return status
+        ? NextResponse.json(status)
+        : NextResponse.json({ error: "Pairing session expired or does not exist." }, { status: 404 });
+    }
 
-  await updatePairingSession(parsed.data.id, parsed.data);
-  return NextResponse.json({ ok: true });
+    await updatePairingSession(parsed.data.id, parsed.data);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(explainError(error), { status: 500 });
+  }
 }

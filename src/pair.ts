@@ -31,9 +31,22 @@ async function brokerRequest(broker: PairingBroker, body: unknown) {
     headers: { Authorization: `Bearer ${broker.secret}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? `Pairing broker returned HTTP ${response.status}.`);
-  return result as Record<string, unknown>;
+  const responseBody = await response.text();
+  if (!response.ok) {
+    let serverError: string | undefined;
+    try {
+      const parsed = JSON.parse(responseBody) as { error?: unknown };
+      if (typeof parsed.error === "string") serverError = parsed.error;
+    } catch {
+      // HTTP status remains authoritative when the broker returns no usable JSON.
+    }
+    throw new Error(`Pairing broker returned HTTP ${response.status}${serverError ? `: ${serverError}` : "."}`);
+  }
+  try {
+    return JSON.parse(responseBody) as Record<string, unknown>;
+  } catch {
+    throw new Error(`Pairing broker returned an unreadable HTTP ${response.status} response.`);
+  }
 }
 
 export function pairingBrokerFromEnv(): PairingBroker | undefined {
@@ -119,6 +132,8 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
               if (status === DisconnectReason.loggedOut) {
                 finish(new Error("WhatsApp rejected the session. Clear this account's auth keys and try again."));
               } else {
+                await credentialSaver.flush();
+                await saveCreds();
                 connect();
               }
             }
@@ -144,6 +159,8 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
         const previousSocket = socket;
         socketGeneration += 1;
         socket = undefined;
+        await credentialSaver.flush();
+        await saveCreds();
         if (previousSocket) await previousSocket.end(undefined).catch(() => undefined);
         if (!finished) connect();
       };

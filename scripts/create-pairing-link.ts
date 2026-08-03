@@ -1,3 +1,4 @@
+import "../src/load-local-env";
 import { appendFile } from "node:fs/promises";
 import { createBrokerPairingSession, pairingBrokerFromEnv } from "../src/pair";
 import { explainError } from "../src/explain-error";
