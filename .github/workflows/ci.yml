@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 24
       - id: dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-${{ runner.arch }}-node24-deps-${{ hashFiles('package-lock.json') }}
