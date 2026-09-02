@@ -67,7 +67,7 @@ jobs:
         run: npm run wa:run
       - name: Upload private structured result
         if: always() && github.event.repository.private
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: whatsapp-result-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/baileys-agent-result.json
