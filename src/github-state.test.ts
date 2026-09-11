@@ -29,7 +29,7 @@ test("rejects malformed encryption keys and envelopes", () => {
   assert.throws(() => decryptState(Buffer.from("not-json"), Buffer.alloc(32), "default"), /malformed/);
 });
 
-function fakeGitHub() {
+function fakeGitHub(options: { staleRefReads?: number } = {}) {
   let sequence = 0;
   let head: string | undefined;
   const blobs = new Map<string, Buffer>();
@@ -37,12 +37,21 @@ function fakeGitHub() {
   const commits = new Map<string, string>();
   const sha = (prefix: string) => `${prefix}-${++sequence}`;
 
+  // GitHub can still answer 404 on a ref read that immediately follows the ref
+  // write. `staleRefReads` replays that, which is what the first save against a
+  // brand new repository actually hits.
+  let staleRefReads = options.staleRefReads ?? 0;
+
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const url = new URL(request.url);
     const path = url.pathname.replace("/repos/owner/repo", "");
     const body = request.method === "GET" ? undefined : await request.json() as Record<string, any>;
     if (request.method === "GET" && path.startsWith("/git/ref/heads/")) {
+      if (head && staleRefReads > 0) {
+        staleRefReads -= 1;
+        return Response.json({ message: "Not Found" }, { status: 404 });
+      }
       return head ? Response.json({ object: { sha: head } }) : Response.json({ message: "Not Found" }, { status: 404 });
     }
     if (request.method === "GET" && path.startsWith("/git/commits/")) {
@@ -113,6 +122,30 @@ test("saves to an orphan Git branch and restores into a clean local state direct
     const restored = await restoreGitHubState({ repository: "owner/repo", token: "test-token" });
     assert.equal(restored.restored, true);
     assert.equal((await createFileAuthState("github-test")).state.creds.registered, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("saves even when the new branch ref is not readable yet", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "baileys-agent-github-"));
+  const originalFetch = globalThis.fetch;
+  const previous = new Map(["WA_STATE_DIR", "WA_STATE_ENCRYPTION_KEY", "WA_ACCOUNT_ID"].map((name) => [name, process.env[name]]));
+  process.env.WA_STATE_DIR = directory;
+  process.env.WA_STATE_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+  process.env.WA_ACCOUNT_ID = "github-test";
+  globalThis.fetch = fakeGitHub({ staleRefReads: 1 });
+  try {
+    const auth = await createFileAuthState("github-test");
+    auth.state.creds.registered = true;
+    await auth.saveCreds();
+    const saved = await saveGitHubState({ repository: "owner/repo", token: "test-token" });
+    assert.equal(saved.saved, true);
   } finally {
     globalThis.fetch = originalFetch;
     for (const [name, value] of previous) {

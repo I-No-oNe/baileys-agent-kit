@@ -176,7 +176,14 @@ async function ensureBranch(settings: GitHubConfig) {
     if (raced) return raced;
     throw error;
   }
-  return (await getBranch(settings))!;
+  // Built from what was just created rather than read back: a ref read
+  // immediately after the ref write can still 404, and re-fetching here made
+  // the very first save on a fresh repository fail after the branch existed.
+  return {
+    headSha: commit!.sha,
+    treeSha: tree!.sha,
+    tree: [{ path: "README.txt", type: "blob", sha: marker!.sha }],
+  };
 }
 
 async function readBlob(settings: GitHubConfig, sha: string): Promise<Buffer> {
