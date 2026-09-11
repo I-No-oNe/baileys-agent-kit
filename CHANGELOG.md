@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.0...v0.3.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **ci:** give the publish trigger an explicit repository ([6831e0e](https://github.com/I-No-oNe/baileys-agent-kit/commit/6831e0ef22259164dec9bacadb52062cb09d1ab0))
+
 ## [0.3.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.2.0...v0.3.0) (2026-09-11)
 
 
