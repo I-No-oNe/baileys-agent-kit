@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.1...v0.3.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **state:** survive a ref read that 404s right after creating the branch ([099f259](https://github.com/I-No-oNe/baileys-agent-kit/commit/099f2595ef245faea0bebca5f6c37631526abc83))
+
 ## [0.3.1](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.0...v0.3.1) (2026-09-11)
 
 
