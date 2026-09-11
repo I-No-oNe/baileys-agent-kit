@@ -1,4 +1,7 @@
 export { actionSchema, llmTool, type AgentAction } from "./actions";
+export { createAuthState, storageBackendFromEnv, type StorageBackend } from "./auth";
+export { createFileAuthState } from "./auth/file";
+export { localStateDirectory, localStatePath } from "./local-files";
 export { publishActionResult } from "./action-result";
 export { connectWhatsApp } from "./client";
 export { executeAction } from "./execute";
