@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.2...v0.3.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **state:** stop the state branch growing without bound ([681c6c3](https://github.com/I-No-oNe/baileys-agent-kit/commit/681c6c3642c656f74f61996a70ba31cbf63d52ba))
+
 ## [0.3.2](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.1...v0.3.2) (2026-09-11)
 
 
