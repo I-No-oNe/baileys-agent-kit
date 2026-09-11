@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.2.0...v0.3.0) (2026-09-11)
+
+
+### Features
+
+* export auth state factories ([def4087](https://github.com/I-No-oNe/baileys-agent-kit/commit/def408729e2c8c3a77bddbd037405e62864db13b))
+
+
+### Bug Fixes
+
+* **deps:** patch critical Next.js AVIF image-optimization RCE ([edc3561](https://github.com/I-No-oNe/baileys-agent-kit/commit/edc356125a7d7b29a8de1a65d0ee3de11fd996c4))
+
 ## [0.2.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.1.9...v0.2.0) (2026-08-04)
 
 ### Features
