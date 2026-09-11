@@ -35,6 +35,7 @@ function fakeGitHub(options: { staleRefReads?: number } = {}) {
   const blobs = new Map<string, Buffer>();
   const trees = new Map<string, Array<{ path: string; type: string; sha: string }>>();
   const commits = new Map<string, string>();
+  const parents = new Map<string, string[]>();
   const sha = (prefix: string) => `${prefix}-${++sequence}`;
 
   // GitHub can still answer 404 on a ref read that immediately follows the ref
@@ -85,6 +86,7 @@ function fakeGitHub(options: { staleRefReads?: number } = {}) {
     if (request.method === "POST" && path === "/git/commits") {
       const commitSha = sha("commit");
       commits.set(commitSha, body!.tree);
+      parents.set(commitSha, body!.parents ?? []);
       return Response.json({ sha: commitSha }, { status: 201 });
     }
     if (request.method === "POST" && path === "/git/refs") {
@@ -97,7 +99,7 @@ function fakeGitHub(options: { staleRefReads?: number } = {}) {
     }
     return Response.json({ message: `Unhandled ${request.method} ${path}` }, { status: 500 });
   };
-  return fetch;
+  return Object.assign(fetch, { parentsOf: (commitSha: string) => parents.get(commitSha) ?? [], headSha: () => head });
 }
 
 test("saves to an orphan Git branch and restores into a clean local state directory", async () => {
@@ -146,6 +148,41 @@ test("saves even when the new branch ref is not readable yet", async () => {
     await auth.saveCreds();
     const saved = await saveGitHubState({ repository: "owner/repo", token: "test-token" });
     assert.equal(saved.saved, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("keeps no history, so a repeatedly saved session cannot grow the branch", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "baileys-agent-github-"));
+  const originalFetch = globalThis.fetch;
+  const previous = new Map(["WA_STATE_DIR", "WA_STATE_ENCRYPTION_KEY", "WA_ACCOUNT_ID"].map((name) => [name, process.env[name]]));
+  process.env.WA_STATE_DIR = directory;
+  process.env.WA_STATE_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+  process.env.WA_ACCOUNT_ID = "github-test";
+  const github = fakeGitHub();
+  globalThis.fetch = github;
+  try {
+    const auth = await createFileAuthState("github-test");
+    auth.state.creds.registered = true;
+    await auth.saveCreds();
+
+    for (let round = 0; round < 3; round += 1) {
+      auth.state.creds.advSecretKey = randomBytes(8).toString("base64");
+      await auth.saveCreds();
+      await saveGitHubState({ repository: "owner/repo", token: "test-token" });
+      assert.deepEqual(github.parentsOf(github.headSha()!), [], "each state commit must be parentless");
+    }
+
+    // The newest state is still the one that comes back.
+    await rm(directory, { recursive: true, force: true });
+    await restoreGitHubState({ repository: "owner/repo", token: "test-token" });
+    assert.equal((await createFileAuthState("github-test")).state.creds.advSecretKey, auth.state.creds.advSecretKey);
   } finally {
     globalThis.fetch = originalFetch;
     for (const [name, value] of previous) {

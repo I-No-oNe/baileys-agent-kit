@@ -266,14 +266,26 @@ export async function saveGitHubState(overrides: Parameters<typeof config>[0] = 
       method: "POST",
       body: JSON.stringify({ base_tree: branch.treeSha, tree: [{ path, mode: "100644", type: "blob", sha: blob!.sha }] }),
     });
+    // Parentless, every time. A session that is pushed a few times a day would
+    // otherwise leave a multi-megabyte blob in history on every run — hundreds
+    // of megabytes a month of objects nothing will ever read, because an older
+    // Signal ratchet is not just useless but actively wrong to restore. Only
+    // the newest commit stays reachable, so the branch keeps one state's worth
+    // of space. base_tree still carries everything else on the branch forward.
+    //
+    // The cost is that an orphan is never a fast-forward, so the ref update has
+    // to force. Concurrency is still guarded by the blob check above, which
+    // re-reads the branch on each attempt; callers that genuinely run in
+    // parallel must serialise themselves (the local account lock, or a CI
+    // concurrency group).
     const commit = await api<{ sha: string }>(settings, "/git/commits", {
       method: "POST",
-      body: JSON.stringify({ message: `chore(state): update encrypted WhatsApp account ${settings.accountId}`, tree: tree!.sha, parents: [branch.headSha] }),
+      body: JSON.stringify({ message: `chore(state): update encrypted WhatsApp account ${settings.accountId}`, tree: tree!.sha, parents: [] }),
     });
     try {
       await api(settings, refPath(settings.branch, true), {
         method: "PATCH",
-        body: JSON.stringify({ sha: commit!.sha, force: false }),
+        body: JSON.stringify({ sha: commit!.sha, force: true }),
       });
       await writeMetadata(settings.accountId, {
         version: STATE_VERSION,
