@@ -66,4 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
-        run: gh workflow run publish-npm.yml --ref main -f tag="$RELEASE_TAG"
+        # --repo is load-bearing: this job never checks the repository out, so
+        # without it gh looks for a git remote in an empty directory and dies
+        # with "fatal: not a git repository" after the release already exists.
+        run: gh workflow run publish-npm.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$RELEASE_TAG"
