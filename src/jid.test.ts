@@ -7,6 +7,10 @@ test("normalizes phone numbers and preserves JIDs", () => {
   assert.equal(toJid("120363000000@g.us"), "120363000000@g.us");
 });
 
+test("preserves LID JIDs instead of rewriting them as phone numbers", () => {
+  assert.equal(toJid("123456789012345@lid"), "123456789012345@lid");
+});
+
 test("rejects empty recipients", () => {
   assert.throws(() => toJid("---"), /phone number or WhatsApp JID/);
 });
