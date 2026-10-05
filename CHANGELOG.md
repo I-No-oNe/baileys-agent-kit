@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.3...v0.3.4) (2026-10-05)
+
+
+### Bug Fixes
+
+* preserve [@lid](https://github.com/lid) recipients and request pairing code after socket is ready ([#60](https://github.com/I-No-oNe/baileys-agent-kit/issues/60)) ([8a37472](https://github.com/I-No-oNe/baileys-agent-kit/commit/8a3747269eebab8b6976116f5578eea0a24a3bf0))
+
 ## [0.3.3](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.2...v0.3.3) (2026-09-11)
 
 
