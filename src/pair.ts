@@ -130,9 +130,15 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
         });
         socket = nextSocket;
         nextSocket.ev.on("creds.update", credentialSaver.schedule);
+        let codeRequested = false;
         nextSocket.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
           if (finished || generation !== socketGeneration) return;
           try {
+            // The first QR event means the socket is ready; requesting a pairing code before that closes the connection.
+            if (qr && options.phoneNumber && !codeRequested) {
+              codeRequested = true;
+              await requestCode(nextSocket, options.phoneNumber);
+            }
             if (qr && !usingPairingCode) {
               await Promise.all([
                 brokerId && options.broker
@@ -162,7 +168,6 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
             finish(error);
           }
         });
-        if (options.phoneNumber) void requestCode(nextSocket, options.phoneNumber).catch(finish);
       };
 
       const requestCode = async (targetSocket: ReturnType<typeof makeWASocket>, phoneNumber: string) => {
