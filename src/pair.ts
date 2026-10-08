@@ -1,5 +1,5 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
-import { createAuthState, storageBackendFromEnv } from "./auth";
+import { createAuthState, storageBackendFromEnv, type AuthStateFactory } from "./auth";
 import { createBaileysLogger } from "./baileys-logger";
 import { createCoalescedSaver } from "./coalesced-saver";
 import { acquireLocalAccountLock } from "./local-files";
@@ -18,7 +18,15 @@ export type PairWhatsAppOptions = {
   onQr?: (qr: string) => void | Promise<void>;
   onPairingCode?: (code: string) => void | Promise<void>;
   onShareUrl?: (url: string) => void | Promise<void>;
+  /** Bring your own session store; defaults to the WA_STORAGE_BACKEND one. The caller then owns cross-process locking. */
+  authState?: AuthStateFactory;
+  /** Aborting ends the pairing socket and rejects with "WhatsApp pairing was cancelled." */
+  signal?: AbortSignal;
 };
+
+function throwIfCancelled(signal: AbortSignal | undefined) {
+  if (signal?.aborted) throw new Error("WhatsApp pairing was cancelled.", { cause: signal.reason });
+}
 
 export function normalizePairingPhoneNumber(phoneNumber: string): string {
   const normalized = phoneNumber.replace(/\D/g, "");
@@ -71,7 +79,8 @@ export async function pairWhatsApp(options: PairWhatsAppOptions = {}): Promise<v
     throw new Error("Israel was detected. A phone number with country code is required for one-time-code pairing.");
   }
   const accountId = options.accountId ?? process.env.WA_ACCOUNT_ID ?? "default";
-  const releaseLock = storageBackendFromEnv() === "file"
+  throwIfCancelled(options.signal);
+  const releaseLock = !options.authState && storageBackendFromEnv() === "file"
     ? await acquireLocalAccountLock(accountId)
     : undefined;
   try {
@@ -85,8 +94,11 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
   if (options.manualQrRefresh && (!options.broker || !options.brokerSessionId)) {
     throw new Error("Manual QR refresh requires a pre-created pairing broker session.");
   }
-  const { state, saveCreds } = await createAuthState(options.accountId);
+  const accountId = options.accountId ?? process.env.WA_ACCOUNT_ID ?? "default";
+  const { state, saveCreds } = await (options.authState ?? createAuthState)(accountId);
+  throwIfCancelled(options.signal);
   const { version } = await fetchLatestBaileysVersion();
+  throwIfCancelled(options.signal);
   const credentialSaver = createCoalescedSaver(saveCreds);
   const pairingTimeoutMs = options.timeoutMs ?? 10 * 60_000;
   const brokerSession = options.broker && !options.brokerSessionId
@@ -108,15 +120,18 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
       let lastRefreshRequestedAt = 0;
       let lastCodeRequestedAt = 0;
       let usingPairingCode = Boolean(options.phoneNumber);
+      const onAbort = () => finish(new Error("WhatsApp pairing was cancelled.", { cause: options.signal?.reason }));
       const finish = (error?: unknown) => {
         if (finished) return;
         finished = true;
         clearTimeout(timeout);
         if (refreshTimer) clearInterval(refreshTimer);
+        options.signal?.removeEventListener("abort", onAbort);
         if (error) reject(error);
         else resolve();
       };
       timeout = setTimeout(() => finish(new Error("WhatsApp pairing timed out.")), pairingTimeoutMs);
+      options.signal?.addEventListener("abort", onAbort, { once: true });
 
       const connect = () => {
         const generation = ++socketGeneration;
@@ -222,7 +237,8 @@ async function pairWhatsAppUnlocked(options: PairWhatsAppOptions): Promise<void>
       if (options.manualQrRefresh) {
         refreshTimer = setInterval(() => void checkForRefreshRequest(), 2_000);
       }
-      connect();
+      if (options.signal?.aborted) onAbort();
+      else connect();
     });
   } catch (error) {
     if (brokerId && options.broker) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { access, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -29,6 +29,25 @@ test("persists credentials and binary Signal keys with private permissions", asy
       assert.equal((await stat(directory)).mode & 0o777, 0o700);
       assert.equal((await stat(localStatePath("test-account", "auth.json"))).mode & 0o777, 0o600);
     }
+  } finally {
+    if (original === undefined) delete process.env.WA_STATE_DIR;
+    else process.env.WA_STATE_DIR = original;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("clear removes the stored file and resets credentials", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "baileys-agent-auth-"));
+  const original = process.env.WA_STATE_DIR;
+  process.env.WA_STATE_DIR = directory;
+  try {
+    const handle = await createFileAuthState("test-account");
+    handle.state.creds.registered = true;
+    await handle.saveCreds();
+    await handle.clear!();
+    await assert.rejects(access(localStatePath("test-account", "auth.json")));
+    assert.equal(handle.state.creds.registered, false);
+    await handle.clear!();
   } finally {
     if (original === undefined) delete process.env.WA_STATE_DIR;
     else process.env.WA_STATE_DIR = original;

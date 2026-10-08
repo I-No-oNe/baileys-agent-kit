@@ -24,6 +24,15 @@ test("encrypts GitHub state with authenticated account-bound ciphertext", () => 
   assert.throws(() => decryptState(Buffer.from(JSON.stringify(envelope)), key, "account-one"), /failed authentication/);
 });
 
+test("binds sealed state to its purpose", () => {
+  const key = randomBytes(32);
+  const sealed = encryptState(Buffer.from("state"), key, "account-one", "gcs-auth");
+  assert.deepEqual(decryptState(sealed, key, "account-one", "gcs-auth"), Buffer.from("state"));
+  assert.throws(() => decryptState(sealed, key, "account-one"), /failed authentication/);
+  assert.deepEqual(decryptState(encryptState(Buffer.from("state"), key, "account-one"), key, "account-one", "github-state"), Buffer.from("state"));
+  assert.throws(() => encryptState(Buffer.from("state"), key, "account-one", "Bad Purpose"), /unsupported characters/);
+});
+
 test("rejects malformed encryption keys and envelopes", () => {
   assert.throws(() => encryptState(Buffer.from("state"), Buffer.alloc(16), "default"), /32 bytes/);
   assert.throws(() => decryptState(Buffer.from("not-json"), Buffer.alloc(32), "default"), /malformed/);

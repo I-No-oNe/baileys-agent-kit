@@ -36,6 +36,7 @@ Local CLI / MCP ─── private file state ─── Baileys ─── WhatsAp
 Optional GitHub Actions ─── AES-256-GCM ciphertext ─── state branch
 
 Optional distributed mode ─── Upstash Redis
+Optional server mode ─── AES-256-GCM ciphertext ─── Google Cloud Storage
 Optional hosted pairing ─── Vercel browser screen
 ```
 
@@ -49,6 +50,8 @@ Local use requires no hosted database, Vercel project, payment method, or GitHub
 - `get_profile`
 - `list_groups`, `get_group`, `create_group`
 - `update_group_subject`, `update_group_participants`
+
+`send_document` takes either a `url` WhatsApp fetches or the file itself as base64 `data` (up to 32 MiB), never both.
 
 Import `llmTool` for a provider-neutral JSON Schema, or use `actionSchema` and `executeAction` directly.
 
@@ -228,11 +231,48 @@ Existing installations remain compatible. Set both `UPSTASH_REDIS_REST_URL` and 
 
 The Vercel browser pairing broker remains optional. It requires writable Upstash storage plus `PAIRING_BROKER_URL`, `PAIRING_PUBLIC_URL`, and matching `PAIRING_BROKER_SECRET` values. Local QR/MCP/phone-code pairing does not require that broker.
 
+### Optional Google Cloud Storage
+
+For a long-lived server on Cloud Run or another host without a persistent disk, keep each account's session in a GCS bucket:
+
+```bash
+WA_STORAGE_BACKEND=gcs
+WA_GCS_BUCKET=my-whatsapp-sessions
+WA_STATE_ENCRYPTION_KEY=...   # base64, 32 bytes; e.g. openssl rand -base64 32, kept in a secret manager
+```
+
+- Each account is one object, `baileys-agent-kit/<account>/auth.enc` (change the prefix with `WA_GCS_PREFIX`), sealed with the same AES-256-GCM `encryptState` as GitHub state, under a per-account key and bound to this store. The bucket only ever holds ciphertext.
+- Every write is conditional on the object generation this process last saw. If another process changed the object, the store stops writing and reports `SESSION_STORAGE_CONFLICT` instead of overwriting its keys. Run one process per account.
+- Writes are serialized and coalesced, so a burst of Signal key updates costs one or two object writes.
+- On Cloud Run, GCE and GKE the metadata server supplies the access token; the runtime's service account needs `roles/storage.objectUser` on the bucket. Elsewhere set `WA_GCS_ACCESS_TOKEN` (for example from `gcloud auth print-access-token`), or `WA_GCS_ENDPOINT` for an emulator. There is no new dependency.
+- Doctor reads the session and performs a write/delete probe, reporting `SESSION_STORAGE_READ_ONLY` when the identity cannot write.
+- The `gcs` backend stores only the session. `runAgentAction` keeps safety counters in local files under it, so a long-lived server should apply `RiskGuard` with its own store.
+
+### Bring your own session store
+
+`connectWhatsApp`, `pairWhatsApp` and `diagnoseWhatsApp` accept an `authState` factory, which overrides `WA_STORAGE_BACKEND`. Each built-in backend can serve as one, or you can implement the factory over your own database:
+
+```ts
+import { connectWhatsApp, createGcsAuthState, diagnoseWhatsApp, pairWhatsApp, type AuthStateFactory } from "baileys-agent-kit";
+
+const authState: AuthStateFactory = (accountId) => createGcsAuthState(accountId, { bucket: "my-whatsapp-sessions" });
+
+const pairing = new AbortController();
+await pairWhatsApp({ accountId: "office-1", authState, signal: pairing.signal, onQr: showQr });
+const connection = await connectWhatsApp({ accountId: "office-1", authState });
+const health = await diagnoseWhatsApp("office-1", { authState });
+```
+
+A factory returns `{ state, saveCreds, clear? }`. `clear` erases the stored session after an unlink; the file and GCS backends provide it. With an injected store, `pairWhatsApp` takes no local account lock: keeping one process per account is up to the caller.
+
+Pass `signal` to stop a pairing that is no longer wanted. Aborting ends the pairing socket and rejects with `WhatsApp pairing was cancelled.`
+
 ### Migrating from an earlier version
 
 - Existing users with both Upstash variables continue using Upstash without migration.
 - New users with no Upstash variables automatically use local files.
 - `WA_STORAGE_BACKEND=file` explicitly ignores legacy Upstash variables.
+- `gcs` is used only when `WA_STORAGE_BACKEND=gcs` is set; it is never selected automatically.
 - Switching backends does not silently copy authentication material. Pair again, or use the GitHub setup command from an already paired local file account.
 - The hosted pairing workflow is optional; free GitHub state is bootstrapped from local pairing instead.
 

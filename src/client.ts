@@ -5,7 +5,7 @@ import makeWASocket, {
   proto,
   type WASocket,
 } from "@whiskeysockets/baileys";
-import { createAuthState } from "./auth";
+import { createAuthState, type AuthStateFactory } from "./auth";
 import { createBaileysLogger } from "./baileys-logger";
 import { createCoalescedSaver } from "./coalesced-saver";
 import { createRecentAccountsCollector, type RecentAccount } from "./recent-accounts";
@@ -14,7 +14,14 @@ const delay = (milliseconds: number) => new Promise((resolve) => setTimeout(reso
 
 class NonRetryableConnectionError extends Error {}
 
-export async function connectWhatsApp(options: { accountId?: string; attempts?: number; timeoutMs?: number; prefetchRecentAccountsMs?: number } = {}): Promise<{
+export async function connectWhatsApp(options: {
+  accountId?: string;
+  attempts?: number;
+  timeoutMs?: number;
+  prefetchRecentAccountsMs?: number;
+  /** Bring your own session store; defaults to the WA_STORAGE_BACKEND one. */
+  authState?: AuthStateFactory;
+} = {}): Promise<{
   socket: WASocket;
   recentAccounts: RecentAccount[];
   close: () => Promise<void>;
@@ -22,7 +29,8 @@ export async function connectWhatsApp(options: { accountId?: string; attempts?: 
   const attempts = options.attempts ?? 3;
   const timeoutMs = options.timeoutMs ?? 30_000;
   const shouldPrefetchRecentAccounts = options.prefetchRecentAccountsMs !== undefined;
-  const { state, saveCreds } = await createAuthState(options.accountId);
+  const accountId = options.accountId ?? process.env.WA_ACCOUNT_ID ?? "default";
+  const { state, saveCreds } = await (options.authState ?? createAuthState)(accountId);
   if (!state.creds.registered && !state.creds.me) throw new Error("WhatsApp is not linked. Run npm run wa:pair.");
 
   const { version, isLatest } = await fetchLatestBaileysVersion();

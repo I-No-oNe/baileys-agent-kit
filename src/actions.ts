@@ -9,6 +9,9 @@ const group = z.string().endsWith("@g.us").describe("WhatsApp group JID ending i
 const messageId = z.string().min(1);
 const participant = z.string().min(1).optional();
 const messageKey = { recipient, messageId, participant };
+/** Largest file send_document accepts inline, before base64. */
+export const MAX_INLINE_DOCUMENT_BYTES = 32 * 1024 * 1024;
+const MAX_INLINE_DOCUMENT_BASE64 = Math.ceil(MAX_INLINE_DOCUMENT_BYTES / 3) * 4;
 const albumItem = z.discriminatedUnion("type", [
   z.object({ type: z.literal("image"), url: z.url(), caption: z.string().max(5000).optional() }),
   z.object({ type: z.literal("video"), url: z.url(), caption: z.string().max(5000).optional() }),
@@ -17,7 +20,15 @@ const albumItem = z.discriminatedUnion("type", [
 export const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("send_text"), to: recipient, text: z.string().min(1).max(5000) }),
   z.object({ action: z.literal("send_image"), to: recipient, url: z.url(), caption: z.string().max(5000).optional() }),
-  z.object({ action: z.literal("send_document"), to: recipient, url: z.url(), fileName: z.string().min(1), mimeType: z.string().min(1), caption: z.string().max(5000).optional() }),
+  z.object({
+    action: z.literal("send_document"),
+    to: recipient,
+    url: z.url().optional().describe("Where WhatsApp fetches the file. Give exactly one of url or data."),
+    data: z.base64().max(MAX_INLINE_DOCUMENT_BASE64).optional().describe("The file itself, base64, at most 32 MiB. Give exactly one of url or data."),
+    fileName: z.string().min(1),
+    mimeType: z.string().min(1),
+    caption: z.string().max(5000).optional(),
+  }).refine((value) => (value.url === undefined) !== (value.data === undefined), "send_document needs exactly one of url or data."),
   z.object({ action: z.literal("send_location"), to: recipient, latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180), name: z.string().optional(), address: z.string().optional() }),
   z.object({ action: z.literal("send_poll"), to: recipient, question: z.string().min(1), options: z.array(z.string().min(1)).min(2).max(12), selectableCount: z.number().int().min(1).optional() }),
   z.object({ action: z.literal("send_album"), to: recipient, items: z.array(albumItem).min(2).max(10) }),
