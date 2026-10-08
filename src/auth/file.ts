@@ -5,7 +5,9 @@ import {
   type SignalDataSet,
   type SignalDataTypeMap,
 } from "@whiskeysockets/baileys";
+import { unlink } from "node:fs/promises";
 import { localStatePath, readOptionalFile, validateAccountId, writePrivateFile } from "../local-files";
+import type { AuthStateHandle } from "./types";
 
 type StoredAuth = {
   version: 1;
@@ -16,10 +18,7 @@ type StoredAuth = {
 const encode = (value: unknown) => JSON.stringify(value, BufferJSON.replacer);
 const decode = <T>(value: string) => JSON.parse(value, BufferJSON.reviver) as T;
 
-export async function createFileAuthState(accountId = process.env.WA_ACCOUNT_ID ?? "default"): Promise<{
-  state: AuthenticationState;
-  saveCreds: () => Promise<void>;
-}> {
+export async function createFileAuthState(accountId = process.env.WA_ACCOUNT_ID ?? "default"): Promise<AuthStateHandle> {
   validateAccountId(accountId);
   const path = localStatePath(accountId, "auth.json");
   const storedFile = await readOptionalFile(path);
@@ -64,5 +63,17 @@ export async function createFileAuthState(accountId = process.env.WA_ACCOUNT_ID 
     },
   };
 
-  return { state, saveCreds: persist };
+  return {
+    state,
+    saveCreds: persist,
+    async clear() {
+      await pending;
+      await unlink(path).catch((error) => {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      });
+      stored.creds = initAuthCreds();
+      stored.keys = {};
+      state.creds = stored.creds;
+    },
+  };
 }

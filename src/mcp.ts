@@ -121,7 +121,7 @@ server.registerTool("whatsapp_capabilities", {
 }, async () => ({ content: [{ type: "text", text: JSON.stringify(agentDescription, null, 2) }] }));
 
 server.registerTool("whatsapp_doctor", {
-  description: "Check local or Upstash session storage, pairing state, safety configuration, and WhatsApp protocol compatibility before acting.",
+  description: "Check local, Upstash or GCS session storage, pairing state, safety configuration, and WhatsApp protocol compatibility before acting.",
   inputSchema: z.object({ accountId: z.string().min(1).optional() }),
   annotations: { readOnlyHint: true, openWorldHint: true },
 }, async ({ accountId }) => {

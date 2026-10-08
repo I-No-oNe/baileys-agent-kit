@@ -106,6 +106,36 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
+  if (/GCS session storage is read-only/i.test(details)) {
+    return failure(
+      "SESSION_STORAGE_READ_ONLY",
+      "The WhatsApp session store cannot save changes.",
+      "The Google Cloud identity can read the GCS bucket but not create or delete objects in it.",
+      ["Grant this runtime's service account roles/storage.objectUser (or objectAdmin) on the bucket.", "Run 'baileys-agent doctor' and continue only after storage reports ok."],
+      false,
+      details,
+    );
+  }
+  if (/GCS session storage was changed by another process/i.test(details)) {
+    return failure(
+      "SESSION_STORAGE_CONFLICT",
+      "Another process changed this account's WhatsApp session.",
+      "Two processes used the same account and GCS object; this one stopped writing so neither overwrites the other's keys.",
+      ["Run exactly one process per account.", "Restart this process to load the current state; do not delete the object unless you intend to pair again."],
+      false,
+      details,
+    );
+  }
+  if (/GCS session storage/i.test(details)) {
+    return failure(
+      "SESSION_STORAGE_ERROR",
+      "The GCS WhatsApp session store could not be used.",
+      "The bucket, encryption key, access token, or network path to Cloud Storage is missing or wrong.",
+      ["Check WA_GCS_BUCKET, WA_STATE_ENCRYPTION_KEY and the runtime's access to the bucket (details name the failing step).", "Run 'baileys-agent doctor' before retrying."],
+      false,
+      details,
+    );
+  }
   if (/No pairing session exists/i.test(details)) {
     return failure(
       "PAIRING_NOT_STARTED",

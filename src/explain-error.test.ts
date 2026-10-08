@@ -53,3 +53,11 @@ test("redacts credentials from technical details", () => {
   const explanation = explainError(new Error("request failed token=secret-value npm_abcdefghijklmnopqrstuvwxyz"));
   assert.doesNotMatch(explanation.details ?? "", /secret-value|npm_abcdefghijklmnopqrstuvwxyz/);
 });
+
+test("explains GCS session storage failures", () => {
+  assert.equal(explainError(new Error("GCS session storage is read-only for this identity.")).code, "SESSION_STORAGE_READ_ONLY");
+  const conflict = explainError(new Error("GCS session storage was changed by another process. Stop this process; do not overwrite it."));
+  assert.equal(conflict.code, "SESSION_STORAGE_CONFLICT");
+  assert.equal(conflict.retryable, false);
+  assert.equal(explainError(new Error("WA_STATE_ENCRYPTION_KEY is required for GCS session storage.")).code, "SESSION_STORAGE_ERROR");
+});

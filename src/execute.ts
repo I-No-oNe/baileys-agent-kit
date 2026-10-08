@@ -116,7 +116,12 @@ export async function executeAction(socket: WASocket, input: unknown, context: {
     case "send_image":
       return messageResult(await socket.sendMessage(toJid(action.to), { image: { url: action.url }, caption: action.caption }));
     case "send_document":
-      return messageResult(await socket.sendMessage(toJid(action.to), { document: { url: action.url }, fileName: action.fileName, mimetype: action.mimeType, caption: action.caption }));
+      return messageResult(await socket.sendMessage(toJid(action.to), {
+        document: action.data === undefined ? { url: action.url! } : Buffer.from(action.data, "base64"),
+        fileName: action.fileName,
+        mimetype: action.mimeType,
+        caption: action.caption,
+      }));
     case "send_location":
       return messageResult(await socket.sendMessage(toJid(action.to), { location: { degreesLatitude: action.latitude, degreesLongitude: action.longitude, name: action.name, address: action.address } }));
     case "send_poll":

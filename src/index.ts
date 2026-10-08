@@ -1,6 +1,7 @@
-export { actionSchema, llmTool, type AgentAction } from "./actions";
-export { createAuthState, storageBackendFromEnv, type StorageBackend } from "./auth";
+export { actionSchema, llmTool, MAX_INLINE_DOCUMENT_BYTES, type AgentAction } from "./actions";
+export { createAuthState, storageBackendFromEnv, type AuthStateFactory, type AuthStateHandle, type StorageBackend } from "./auth";
 export { createFileAuthState } from "./auth/file";
+export { createGcsAuthState, type GcsAuthStateOptions } from "./auth/gcs";
 export { localStateDirectory, localStatePath } from "./local-files";
 export { publishActionResult } from "./action-result";
 export { connectWhatsApp } from "./client";

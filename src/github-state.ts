@@ -53,16 +53,18 @@ function accountKey(masterKey: Buffer, accountId: string): Buffer {
   return Buffer.from(hkdfSync("sha256", masterKey, "baileys-agent-kit-state-v1", accountId, 32));
 }
 
-function additionalData(accountId: string): Buffer {
-  return Buffer.from(`baileys-agent-kit/github-state/v1\0${accountId}`);
+// The purpose is bound into the authenticated data, so a blob sealed for one store cannot be replayed into another.
+function additionalData(accountId: string, purpose: string): Buffer {
+  if (!/^[a-z0-9-]{1,32}$/.test(purpose)) throw new Error("State encryption purpose contains unsupported characters.");
+  return Buffer.from(`baileys-agent-kit/${purpose}/v1\0${accountId}`);
 }
 
-export function encryptState(plaintext: Buffer, masterKey: Buffer, accountId: string): Buffer {
+export function encryptState(plaintext: Buffer, masterKey: Buffer, accountId: string, purpose = "github-state"): Buffer {
   validateAccountId(accountId);
   if (masterKey.length !== 32) throw new Error("GitHub state encryption key must contain 32 bytes.");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", accountKey(masterKey, accountId), iv);
-  cipher.setAAD(additionalData(accountId));
+  cipher.setAAD(additionalData(accountId, purpose));
   const ciphertext = Buffer.concat([cipher.update(gzipSync(plaintext)), cipher.final()]);
   const envelope: EncryptedEnvelope = {
     version: STATE_VERSION,
@@ -74,7 +76,7 @@ export function encryptState(plaintext: Buffer, masterKey: Buffer, accountId: st
   return Buffer.from(JSON.stringify(envelope));
 }
 
-export function decryptState(encrypted: Buffer, masterKey: Buffer, accountId: string): Buffer {
+export function decryptState(encrypted: Buffer, masterKey: Buffer, accountId: string, purpose = "github-state"): Buffer {
   validateAccountId(accountId);
   let envelope: EncryptedEnvelope;
   try {
@@ -85,9 +87,10 @@ export function decryptState(encrypted: Buffer, masterKey: Buffer, accountId: st
   if (envelope.version !== STATE_VERSION || envelope.algorithm !== "aes-256-gcm") {
     throw new Error("Encrypted GitHub state uses an unsupported format.");
   }
+  const aad = additionalData(accountId, purpose);
   try {
     const decipher = createDecipheriv("aes-256-gcm", accountKey(masterKey, accountId), Buffer.from(envelope.iv, "base64"));
-    decipher.setAAD(additionalData(accountId));
+    decipher.setAAD(aad);
     decipher.setAuthTag(Buffer.from(envelope.tag, "base64"));
     return gunzipSync(Buffer.concat([
       decipher.update(Buffer.from(envelope.ciphertext, "base64")),

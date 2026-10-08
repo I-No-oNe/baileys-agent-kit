@@ -243,3 +243,23 @@ test("maps group participant updates and normalizes phone numbers", async () => 
   assert.deepEqual(calls, [["120363000000@g.us", ["15551234567@s.whatsapp.net"], "add"]]);
   assert.deepEqual(result, [{ status: "200" }]);
 });
+
+test("sends a document from inline data or a URL, never both", async () => {
+  const calls: unknown[][] = [];
+  const socket = {
+    async sendMessage(...args: unknown[]) {
+      calls.push(args);
+      return { key: { id: "document-1", remoteJid: String(args[0]) } };
+    },
+  } as unknown as WASocket;
+  const base = { action: "send_document", to: "+15551234567", fileName: "invoice.pdf", mimeType: "application/pdf" };
+
+  await executeAction(socket, { ...base, data: Buffer.from("%PDF-1.7").toString("base64") });
+  await executeAction(socket, { ...base, url: "https://files.example.com/invoice.pdf" });
+  assert.deepEqual((calls[0][1] as { document: Buffer }).document, Buffer.from("%PDF-1.7"));
+  assert.deepEqual((calls[1][1] as { document: unknown }).document, { url: "https://files.example.com/invoice.pdf" });
+
+  await assert.rejects(executeAction(socket, base), /exactly one of url or data/);
+  await assert.rejects(executeAction(socket, { ...base, url: "https://files.example.com/a.pdf", data: "JVBERg==" }), /exactly one of url or data/);
+  assert.equal(calls.length, 2);
+});
