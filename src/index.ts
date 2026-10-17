@@ -6,6 +6,7 @@ export { localStateDirectory, localStatePath } from "./local-files";
 export { publishActionResult } from "./action-result";
 export { connectWhatsApp } from "./client";
 export { executeAction } from "./execute";
+export { onIncomingMessage, type InboundMedia, type InboundMediaKind, type InboundMessage } from "./inbound";
 export { explainError, type ExplainedFailure } from "./explain-error";
 export { decryptState, encryptState, restoreGitHubState, saveGitHubState, setupGitHubState } from "./github-state";
 export { toJid } from "./jid";

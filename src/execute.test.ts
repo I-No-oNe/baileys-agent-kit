@@ -263,3 +263,29 @@ test("sends a document from inline data or a URL, never both", async () => {
   await assert.rejects(executeAction(socket, { ...base, url: "https://files.example.com/a.pdf", data: "JVBERg==" }), /exactly one of url or data/);
   assert.equal(calls.length, 2);
 });
+
+test("includes media metadata when the awaited message carries a file", async () => {
+  type Upsert = Parameters<Parameters<WASocket["ev"]["on"]>[1]>[0];
+  let listener: ((event: Upsert) => void) | undefined;
+  const socket = {
+    ev: {
+      on(event: string, next: (event: Upsert) => void) { if (event === "messages.upsert") listener = next; },
+      off() { listener = undefined; },
+    },
+  } as unknown as WASocket;
+
+  const waiting = executeAction(socket, { action: "wait_for_message", from: "+15551234567", timeoutSeconds: 30 });
+  listener?.({
+    type: "notify",
+    messages: [{
+      key: { id: "photo-1", remoteJid: "15551234567@s.whatsapp.net", fromMe: false },
+      message: { imageMessage: { mimetype: "image/jpeg", fileLength: 4096, caption: "Receipt" } },
+    }],
+  });
+
+  const result = await waiting as { type: string; text: string; media: unknown; replyTo: unknown };
+  assert.equal(result.type, "image");
+  assert.equal(result.text, "Receipt");
+  assert.deepEqual(result.media, { kind: "image", mimetype: "image/jpeg", fileName: null, sizeBytes: 4096, caption: "Receipt" });
+  assert.equal(result.replyTo, null);
+});

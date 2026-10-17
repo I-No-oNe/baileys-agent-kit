@@ -1,11 +1,6 @@
-import {
-  normalizeMessageContent,
-  type BaileysEventMap,
-  type WAMessage,
-  type WASocket,
-  type WAMessageKey,
-} from "@whiskeysockets/baileys";
+import { type BaileysEventMap, type WASocket, type WAMessageKey } from "@whiskeysockets/baileys";
 import { actionSchema, type AgentAction } from "./actions";
+import { messageParticipants, toInboundMessage, type InboundMessage } from "./inbound";
 import { toJid } from "./jid";
 import type { RecentAccount } from "./recent-accounts";
 
@@ -25,42 +20,10 @@ function messageResult(message: Awaited<ReturnType<WASocket["sendMessage"]>>) {
   return { messageId: message?.key.id ?? null, recipient: message?.key.remoteJid ?? null };
 }
 
-function receivedContent(message: WAMessage) {
-  const content = normalizeMessageContent(message.message);
-  if (content?.conversation) return { type: "text", text: content.conversation, media: null };
-  if (content?.extendedTextMessage?.text) return { type: "text", text: content.extendedTextMessage.text, media: null };
-  if (content?.imageMessage) return {
-    type: "image",
-    text: content.imageMessage.caption ?? null,
-    media: { mimetype: content.imageMessage.mimetype ?? null, fileName: null },
-  };
-  if (content?.videoMessage) return {
-    type: "video",
-    text: content.videoMessage.caption ?? null,
-    media: { mimetype: content.videoMessage.mimetype ?? null, fileName: null },
-  };
-  if (content?.audioMessage) return {
-    type: "audio",
-    text: null,
-    media: { mimetype: content.audioMessage.mimetype ?? null, fileName: null },
-  };
-  if (content?.documentMessage) return {
-    type: "document",
-    text: content.documentMessage.caption ?? null,
-    media: { mimetype: content.documentMessage.mimetype ?? null, fileName: content.documentMessage.fileName ?? null },
-  };
-  if (content?.stickerMessage) return {
-    type: "sticker",
-    text: null,
-    media: { mimetype: content.stickerMessage.mimetype ?? null, fileName: null },
-  };
-  return { type: "unknown", text: null, media: null };
-}
-
 function waitForMessage(
   socket: WASocket,
   action: Extract<AgentAction, { action: "wait_for_message" }>,
-): Promise<unknown> {
+): Promise<InboundMessage> {
   const recipient = toJid(action.from);
   const expectedParticipant = action.participant ? toJid(action.participant) : undefined;
 
@@ -75,27 +38,11 @@ function waitForMessage(
         if (message.key.fromMe || !message.key.id) continue;
         const chats = [message.key.remoteJid, message.key.remoteJidAlt].filter(Boolean);
         if (!chats.includes(recipient)) continue;
-        const participants = [message.key.participantAlt, message.key.participant, message.participant].filter(Boolean);
+        const participants = messageParticipants(message);
         if (expectedParticipant && !participants.includes(expectedParticipant)) continue;
 
-        const participant = expectedParticipant ?? participants[0] ?? null;
-        const content = receivedContent(message);
         cleanup();
-        resolve({
-          messageId: message.key.id,
-          recipient,
-          participant,
-          timestamp: message.messageTimestamp == null ? null : Number(message.messageTimestamp),
-          ...content,
-          replyTo: content.type === "text" && content.text
-            ? {
-                recipient,
-                messageId: message.key.id,
-                ...(participant ? { participant } : {}),
-                quotedText: content.text,
-              }
-            : null,
-        });
+        resolve(toInboundMessage(message, recipient, expectedParticipant ?? participants[0] ?? null));
         return;
       }
     };

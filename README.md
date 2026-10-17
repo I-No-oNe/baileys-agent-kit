@@ -103,7 +103,7 @@ const incoming = await executeAction(connection.socket, {
 });
 ```
 
-The result includes normalized text or caption, media type metadata, and a ready-to-use `replyTo` object for text messages. Add `participant` to filter one sender inside a group. The action ignores messages sent by the linked account and history-sync events. It does not download received media.
+The result includes normalized text or caption and a ready-to-use `replyTo` object for text messages. Images, videos, audio, documents, and stickers also carry `media: { kind, mimetype, fileName, sizeBytes, caption }`, without the file itself. Add `participant` to filter one sender inside a group. The action ignores messages sent by the linked account and history-sync events.
 
 Fetch the profile fields WhatsApp exposes to the linked account for one number:
 
@@ -349,7 +349,19 @@ console.log(await incoming);
 await connection.close();
 ```
 
-`wait_for_message` is a bounded one-shot primitive, not a subscription service. A production chat backend should keep the socket alive, consume Baileys message events continuously, and serialize outbound mutations through an internal queue. Calls to low-level `executeAction` do not apply `runAgentAction`'s default risk guard, so the backend must apply equivalent recipient allowlists, rate limits, and circuit breaking.
+`wait_for_message` is a bounded one-shot primitive, not a subscription service. To consume every incoming message, subscribe with `onIncomingMessage`. It skips the linked account's own messages and status updates, includes messages WhatsApp delivers late after a reconnect, and hands each one over in the `wait_for_message` result shape:
+
+```ts
+import { connectWhatsApp, onIncomingMessage } from "baileys-agent-kit";
+
+const connection = await connectWhatsApp();
+const stop = onIncomingMessage(connection, (message) => {
+  console.log(message.recipient, message.type, message.text, message.media);
+});
+// Later: stop();
+```
+
+A production chat backend should keep the socket alive and serialize outbound mutations through an internal queue. Calls to low-level `executeAction` do not apply `runAgentAction`'s default risk guard, so the backend must apply equivalent recipient allowlists, rate limits, and circuit breaking.
 
 ## Risk controls
 
