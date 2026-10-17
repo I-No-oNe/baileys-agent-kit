@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.3...v0.4.0) (2026-10-17)
+
+
+### Features
+
+* cancel pairWhatsApp with an AbortSignal ([e6c0f6c](https://github.com/I-No-oNe/baileys-agent-kit/commit/e6c0f6c3592b9e077ca756fe232dcd2bdc2f453e))
+* check_numbers action with a daily lookup budget ([0135a94](https://github.com/I-No-oNe/baileys-agent-kit/commit/0135a94fe7a79202aeea676ba5e5da6e7abfa9a9))
+* download_media action for received files ([39dfeb2](https://github.com/I-No-oNe/baileys-agent-kit/commit/39dfeb24514d62014a7d687951010b51e49a0b6d))
+* encrypted Google Cloud Storage session backend (`WA_STORAGE_BACKEND=gcs`) ([e6c0f6c](https://github.com/I-No-oNe/baileys-agent-kit/commit/e6c0f6c3592b9e077ca756fe232dcd2bdc2f453e))
+* inbound media metadata and onIncomingMessage helper ([b7acb8f](https://github.com/I-No-oNe/baileys-agent-kit/commit/b7acb8f2b1f4b80ca84764019711fecf2c0bbf6b))
+* injectable session store (`authState`) for connectWhatsApp, pairWhatsApp and diagnoseWhatsApp ([e6c0f6c](https://github.com/I-No-oNe/baileys-agent-kit/commit/e6c0f6c3592b9e077ca756fe232dcd2bdc2f453e))
+* send_document accepts inline base64 `data` ([e6c0f6c](https://github.com/I-No-oNe/baileys-agent-kit/commit/e6c0f6c3592b9e077ca756fe232dcd2bdc2f453e))
+
+
+### Bug Fixes
+
+* preserve [@lid](https://github.com/lid) recipients and request pairing code after socket is ready ([#60](https://github.com/I-No-oNe/baileys-agent-kit/issues/60)) ([8a37472](https://github.com/I-No-oNe/baileys-agent-kit/commit/8a3747269eebab8b6976116f5578eea0a24a3bf0))
+* update vulnerable transitive dependencies ([ea21bcf](https://github.com/I-No-oNe/baileys-agent-kit/commit/ea21bcf1e1eb79d54beac9bbb96fdc0dc70b1f5d))
+
 ## [0.3.3](https://github.com/I-No-oNe/baileys-agent-kit/compare/v0.3.2...v0.3.3) (2026-09-11)
 
 
