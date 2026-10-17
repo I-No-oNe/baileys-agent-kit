@@ -68,6 +68,16 @@ test("accepts a media download by message key", () => {
   assert.equal(actionSchema.safeParse({ action: "download_media", recipient: "+15551234567" }).success, false);
 });
 
+test("accepts 1 to 50 numbers to check, never groups", () => {
+  assert.deepEqual(actionSchema.parse({ action: "check_numbers", numbers: ["+15551234567", "15550000001@s.whatsapp.net"] }), {
+    action: "check_numbers",
+    numbers: ["+15551234567", "15550000001@s.whatsapp.net"],
+  });
+  assert.equal(actionSchema.safeParse({ action: "check_numbers", numbers: [] }).success, false);
+  assert.equal(actionSchema.safeParse({ action: "check_numbers", numbers: Array.from({ length: 51 }, (_, index) => `+1555000${index}`) }).success, false);
+  assert.equal(actionSchema.safeParse({ action: "check_numbers", numbers: ["120363000000@g.us"] }).success, false);
+});
+
 test("accepts bounded recent-account prefetching", () => {
   assert.deepEqual(actionSchema.parse({ action: "list_recent_accounts", limit: 25, prefetchSeconds: 8 }), {
     action: "list_recent_accounts",

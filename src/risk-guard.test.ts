@@ -67,6 +67,7 @@ test("treats empty or whitespace send-limit environment values as unlimited", ()
     "WA_MAX_SENDS_PER_DAY",
     "WA_MAX_SENDS_PER_RECIPIENT_PER_DAY",
     "WA_MAX_UNIQUE_RECIPIENTS_PER_DAY",
+    "WA_MAX_NUMBER_CHECKS_PER_DAY",
     "WA_MINIMUM_SEND_INTERVAL_MS",
   ] as const;
   const previous = new Map(names.map((name) => [name, process.env[name]]));
@@ -77,6 +78,7 @@ test("treats empty or whitespace send-limit environment values as unlimited", ()
     assert.equal(parsed.maxSendsPerDay, Infinity);
     assert.equal(parsed.maxSendsPerRecipientPerDay, Infinity);
     assert.equal(parsed.maxUniqueRecipientsPerDay, Infinity);
+    assert.equal(parsed.maxNumberChecksPerDay, Infinity);
     assert.equal(parsed.minimumSendIntervalMs, 0);
   } finally {
     for (const [name, value] of previous) {
@@ -173,6 +175,33 @@ test("opens a circuit after repeated failures", async () => {
   await guard.recordFailure();
   await guard.recordFailure();
   await assert.rejects(guard.reserve({ action: "list_groups" }), /safety circuit is open/);
+});
+
+test("budgets daily number checks without touching send limits", async () => {
+  const guard = new RiskGuard(memoryStore(), "lookups", { ...config, maxNumberChecksPerDay: 3 });
+  await guard.reserve({ action: "check_numbers", numbers: ["+15550000001", "+1 555 000 0001", "+15550000002"] });
+  await guard.reserve({ action: "send_text", to: "+15550000001", text: "Hello" });
+  await assert.rejects(
+    guard.reserve({ action: "check_numbers", numbers: ["+15550000003", "+15550000004"] }),
+    /Daily number-check limit reached/,
+  );
+  await guard.reserve({ action: "check_numbers", numbers: ["+15550000003"] });
+});
+
+test("applies the allowlist and circuit breaker to number checks", async () => {
+  const allowlisted = new RiskGuard(memoryStore(), "lookups", {
+    ...config,
+    allowedRecipients: new Set(["15550000001@s.whatsapp.net"]),
+  });
+  await assert.rejects(
+    allowlisted.reserve({ action: "check_numbers", numbers: ["+15550000001", "+15550000002"] }),
+    /15550000002@s.whatsapp.net is not in WA_ALLOWED_RECIPIENTS/,
+  );
+
+  const failing = new RiskGuard(memoryStore(), "lookups", config);
+  await failing.recordFailure();
+  await failing.recordFailure();
+  await assert.rejects(failing.reserve({ action: "check_numbers", numbers: ["+15550000001"] }), /safety circuit is open/);
 });
 
 test("requires explicit opt-in for group administration", async () => {

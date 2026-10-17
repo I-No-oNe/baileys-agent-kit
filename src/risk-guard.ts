@@ -44,6 +44,8 @@ export type RiskConfig = {
   circuitBreakerSeconds: number;
   allowedRecipients: Set<string>;
   groupAdminEnabled: boolean;
+  /** Numbers check_numbers may look up per UTC day; defaults to 200. */
+  maxNumberChecksPerDay?: number;
 };
 
 function integerEnv(name: string, fallback: number, minimum: number, maximum: number, emptyValue = fallback) {
@@ -74,6 +76,7 @@ export function riskConfigFromEnv(): RiskConfig {
     circuitBreakerSeconds: integerEnv("WA_CIRCUIT_BREAKER_SECONDS", 30 * 60, 60, 24 * 60 * 60),
     allowedRecipients,
     groupAdminEnabled: process.env.WA_ENABLE_GROUP_ADMIN === "true",
+    maxNumberChecksPerDay: integerEnv("WA_MAX_NUMBER_CHECKS_PER_DAY", 200, 1, 10_000, Infinity),
   };
 }
 
@@ -98,6 +101,8 @@ function targets(action: AgentAction): string[] {
       return [toJid(action.from)];
     case "get_profile":
       return [toJid(action.number)];
+    case "check_numbers":
+      return [...new Set(action.numbers.map(toJid))];
     case "get_group":
     case "update_group_subject":
     case "update_group_participants":
@@ -142,6 +147,7 @@ export class RiskGuard {
       const blocked = actionTargets.find((target) => !this.config.allowedRecipients.has(target));
       if (blocked) throw new Error(`Recipient ${blocked} is not in WA_ALLOWED_RECIPIENTS.`);
     }
+    if (action.action === "check_numbers") return this.reserveNumberChecks(actionTargets.length);
     if (!SEND_ACTIONS.has(action.action)) {
       if (await this.store.get(`${prefix}:circuit_open`)) {
         throw new Error("WhatsApp safety circuit is open after repeated failures. Wait before retrying.");
@@ -185,6 +191,20 @@ export class RiskGuard {
       .expire(recipientsKey, 2 * 24 * 60 * 60)
       .set(`${prefix}:last_send_at`, Date.now(), { ex: 24 * 60 * 60 })
       .exec();
+  }
+
+  // Lookups send nothing, but a daily budget keeps check_numbers from enumerating a number range.
+  private async reserveNumberChecks(amount: number): Promise<void> {
+    const prefix = this.prefix();
+    const checksKey = `${prefix}:${new Date().toISOString().slice(0, 10)}:number_checks`;
+    const [circuitOpen, checks] = await this.store
+      .pipeline()
+      .get<number>(`${prefix}:circuit_open`)
+      .get<number>(checksKey)
+      .exec();
+    if (circuitOpen) throw new Error("WhatsApp safety circuit is open after repeated failures. Wait before retrying.");
+    if ((checks ?? 0) + amount > (this.config.maxNumberChecksPerDay ?? 200)) throw new Error("Daily number-check limit reached.");
+    await this.store.pipeline().incrby(checksKey, amount).expire(checksKey, 2 * 24 * 60 * 60).exec();
   }
 
   async recordSuccess(): Promise<void> {

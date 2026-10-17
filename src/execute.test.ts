@@ -297,3 +297,25 @@ test("download_media explains that only media received on this connection can be
     /No received media message expired-or-unknown from \+15551234567 is known on this connection/,
   );
 });
+
+test("checks a batch of numbers in one WhatsApp lookup and keeps the caller's order", async () => {
+  const calls: unknown[][] = [];
+  const socket = {
+    async onWhatsApp(...args: unknown[]) {
+      calls.push(args);
+      return [{ jid: "15550000002@s.whatsapp.net", exists: true }];
+    },
+  } as unknown as WASocket;
+
+  const result = await executeAction(socket, {
+    action: "check_numbers",
+    numbers: ["+1 555 000 0001", "+1 (555) 000-0002", "15550000002@s.whatsapp.net"],
+  });
+
+  assert.deepEqual(calls, [["15550000001@s.whatsapp.net", "15550000002@s.whatsapp.net"]]);
+  assert.deepEqual(result, [
+    { number: "+1 555 000 0001", onWhatsApp: false, jid: null },
+    { number: "+1 (555) 000-0002", onWhatsApp: true, jid: "15550000002@s.whatsapp.net" },
+    { number: "15550000002@s.whatsapp.net", onWhatsApp: true, jid: "15550000002@s.whatsapp.net" },
+  ]);
+});

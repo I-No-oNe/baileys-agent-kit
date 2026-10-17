@@ -47,7 +47,7 @@ Local use requires no hosted database, Vercel project, payment method, or GitHub
 - `send_text`, `send_image`, `send_document`, `send_location`, `send_poll`, `send_album`
 - `reply_text`, `react`, `edit_text`, `delete_message`, `mark_read`
 - `wait_for_message`, `download_media`
-- `get_profile`
+- `get_profile`, `check_numbers`
 - `list_groups`, `get_group`, `create_group`
 - `update_group_subject`, `update_group_participants`
 
@@ -128,6 +128,19 @@ const profile = await executeAction(connection.socket, {
 ```
 
 The result can include registration status, temporary profile-picture URL, About/bio text, and business description, category, address, email, websites, and hours. Privacy-hidden or unavailable fields return `null`. WhatsApp does not reliably expose an arbitrary contact's display name. Profile lookup follows `WA_ALLOWED_RECIPIENTS` and does not support bulk number enumeration.
+
+Check which of up to 50 numbers have a WhatsApp account in one lookup:
+
+```ts
+const checked = await executeAction(connection.socket, {
+  action: "check_numbers",
+  numbers: ["+972501234567", "+15551234567"],
+});
+// [{ number: "+972501234567", onWhatsApp: true, jid: "972501234567@s.whatsapp.net" },
+//  { number: "+15551234567", onWhatsApp: false, jid: null }]
+```
+
+Numbers follow the `get_profile` rules. The risk guard applies `WA_ALLOWED_RECIPIENTS` to every number, the circuit breaker, and a budget of 200 checked numbers per UTC day so the action cannot enumerate number ranges.
 
 To discover recent chats without slowing every action, request an opt-in bounded prefetch:
 
@@ -387,6 +400,7 @@ These controls reduce accidental spam and repeated failing connections. They can
 - 20 unique recipients per UTC day
 - At least 3.5 seconds between outbound sends
 - Circuit breaker for 30 minutes after three failures in ten minutes
+- 200 numbers checked with `check_numbers` per UTC day
 - Group administration disabled unless `WA_ENABLE_GROUP_ADMIN=true`
 - Optional hard recipient allowlist through `WA_ALLOWED_RECIPIENTS`
 

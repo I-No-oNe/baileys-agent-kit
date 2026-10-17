@@ -173,6 +173,14 @@ export async function executeAction(socket: WASocket, input: unknown, context: {
           : null,
       };
     }
+    case "check_numbers": {
+      const jids = [...new Set(action.numbers.map(toJid))];
+      const registered = new Set((await socket.onWhatsApp(...jids) ?? []).filter((result) => result.exists).map((result) => result.jid));
+      return action.numbers.map((number) => {
+        const jid = toJid(number);
+        return registered.has(jid) ? { number, onWhatsApp: true, jid } : { number, onWhatsApp: false, jid: null };
+      });
+    }
     case "list_recent_accounts":
       return (context.recentAccounts ?? []).slice(0, action.limit ?? 20);
     case "list_groups": {
