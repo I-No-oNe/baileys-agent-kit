@@ -289,3 +289,11 @@ test("includes media metadata when the awaited message carries a file", async ()
   assert.deepEqual(result.media, { kind: "image", mimetype: "image/jpeg", fileName: null, sizeBytes: 4096, caption: "Receipt" });
   assert.equal(result.replyTo, null);
 });
+
+test("download_media explains that only media received on this connection can be fetched", async () => {
+  const socket = { ev: { on() {}, off() {} } } as unknown as WASocket;
+  await assert.rejects(
+    executeAction(socket, { action: "download_media", recipient: "+15551234567", messageId: "expired-or-unknown" }),
+    /No received media message expired-or-unknown from \+15551234567 is known on this connection/,
+  );
+});

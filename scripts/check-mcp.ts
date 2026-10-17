@@ -33,6 +33,7 @@ try {
   assert.match(text.text, /send_album/);
   assert.match(text.text, /wait_for_message/);
   assert.match(text.text, /get_profile/);
+  assert.match(text.text, /download_media/);
 
   const missingPairing = await client.callTool({
     name: "whatsapp_pair_status",

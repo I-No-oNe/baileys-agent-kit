@@ -216,6 +216,26 @@ export function explainError(error: unknown): ExplainedFailure {
       details,
     );
   }
+  if (/No received media message .* is known on this connection/i.test(details)) {
+    return failure(
+      "MEDIA_NOT_AVAILABLE",
+      "That media message is not available to download on this connection.",
+      "download_media only reaches recent media messages received while the current connection was open; one-shot CLI and MCP runs open a new connection each time.",
+      ["Check the recipient and messageId against the received message.", "Download from a long-lived connection that received the message, for example right after wait_for_message or onIncomingMessage."],
+      false,
+      details,
+    );
+  }
+  if (/download_media limit/i.test(details)) {
+    return failure(
+      "MEDIA_TOO_LARGE",
+      "The received file is larger than download_media returns.",
+      "download_media returns files inline as base64 and stops at 32 MiB.",
+      ["Ask the sender for a smaller file or a link instead.", "Do not retry the same download."],
+      false,
+      details,
+    );
+  }
   if (/Upstash|Redis|local WhatsApp session store|session store/i.test(details)) {
     return failure(
       "SESSION_STORAGE_ERROR",

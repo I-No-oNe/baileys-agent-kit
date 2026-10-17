@@ -46,7 +46,7 @@ Local use requires no hosted database, Vercel project, payment method, or GitHub
 
 - `send_text`, `send_image`, `send_document`, `send_location`, `send_poll`, `send_album`
 - `reply_text`, `react`, `edit_text`, `delete_message`, `mark_read`
-- `wait_for_message`
+- `wait_for_message`, `download_media`
 - `get_profile`
 - `list_groups`, `get_group`, `create_group`
 - `update_group_subject`, `update_group_participants`
@@ -104,6 +104,19 @@ const incoming = await executeAction(connection.socket, {
 ```
 
 The result includes normalized text or caption and a ready-to-use `replyTo` object for text messages. Images, videos, audio, documents, and stickers also carry `media: { kind, mimetype, fileName, sizeBytes, caption }`, without the file itself. Add `participant` to filter one sender inside a group. The action ignores messages sent by the linked account and history-sync events.
+
+Download a received image, video, audio, document, or sticker by its message key:
+
+```ts
+const file = await executeAction(connection.socket, {
+  action: "download_media",
+  recipient: incoming.recipient,
+  messageId: incoming.messageId,
+});
+// { mimetype, fileName, sizeBytes, sha256, data } with data as base64
+```
+
+Files above 32 MiB fail with `MEDIA_TOO_LARGE`. Each connection remembers the last 200 media messages it received, so only media that arrived while the connection was open can be downloaded; a one-shot CLI or MCP run opens a fresh connection and reports `MEDIA_NOT_AVAILABLE`. When WhatsApp has expired the file, the kit asks the sender's phone to upload it again.
 
 Fetch the profile fields WhatsApp exposes to the linked account for one number:
 
@@ -360,6 +373,8 @@ const stop = onIncomingMessage(connection, (message) => {
 });
 // Later: stop();
 ```
+
+Messages handed to the handler are already remembered, so it can pass `message.recipient` and `message.messageId` to `download_media` on the same connection.
 
 A production chat backend should keep the socket alive and serialize outbound mutations through an internal queue. Calls to low-level `executeAction` do not apply `runAgentAction`'s default risk guard, so the backend must apply equivalent recipient allowlists, rate limits, and circuit breaking.
 

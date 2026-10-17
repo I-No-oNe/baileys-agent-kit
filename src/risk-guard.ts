@@ -92,6 +92,7 @@ function targets(action: AgentAction): string[] {
     case "edit_text":
     case "delete_message":
     case "mark_read":
+    case "download_media":
       return [toJid(action.recipient)];
     case "wait_for_message":
       return [toJid(action.from)];

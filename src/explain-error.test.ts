@@ -61,3 +61,10 @@ test("explains GCS session storage failures", () => {
   assert.equal(conflict.retryable, false);
   assert.equal(explainError(new Error("WA_STATE_ENCRYPTION_KEY is required for GCS session storage.")).code, "SESSION_STORAGE_ERROR");
 });
+
+test("explains media downloads that are unavailable or too large", () => {
+  const missing = explainError(new Error("No received media message 3EB0 from +15551234567 is known on this connection. download_media only reaches the last 200 media messages received while the connection was open."));
+  assert.equal(missing.code, "MEDIA_NOT_AVAILABLE");
+  assert.equal(missing.retryable, false);
+  assert.equal(explainError(new Error("Media is 40000000 bytes, above the 33554432-byte (32 MiB) download_media limit.")).code, "MEDIA_TOO_LARGE");
+});

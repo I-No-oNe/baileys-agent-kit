@@ -161,6 +161,11 @@ test("blocks recipients outside an explicit allowlist", async () => {
     guard.reserve({ action: "get_profile", number: "+15551234567" }),
     /not in WA_ALLOWED_RECIPIENTS/,
   );
+  await assert.rejects(
+    guard.reserve({ action: "download_media", recipient: "+15551234567", messageId: "3EB0" }),
+    /not in WA_ALLOWED_RECIPIENTS/,
+  );
+  await guard.reserve({ action: "download_media", recipient: "+15550000000", messageId: "3EB0" });
 });
 
 test("opens a circuit after repeated failures", async () => {

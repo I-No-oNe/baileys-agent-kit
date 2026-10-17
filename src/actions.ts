@@ -37,6 +37,7 @@ export const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("edit_text"), text: z.string().min(1).max(5000), ...messageKey }),
   z.object({ action: z.literal("delete_message"), ...messageKey }),
   z.object({ action: z.literal("mark_read"), ...messageKey }),
+  z.object({ action: z.literal("download_media"), ...messageKey }),
   z.object({ action: z.literal("wait_for_message"), from: recipient, participant, timeoutSeconds: z.number().int().min(1).max(300).optional() }),
   z.object({ action: z.literal("get_profile"), number: profileNumber }),
   z.object({ action: z.literal("list_recent_accounts"), limit: z.number().int().min(1).max(100).optional(), prefetchSeconds: z.number().int().min(0).max(30).optional() }),
@@ -51,6 +52,6 @@ export type AgentAction = z.infer<typeof actionSchema>;
 
 export const llmTool = {
   name: "whatsapp",
-  description: "Send, receive, and manage WhatsApp messages and groups through a linked account.",
+  description: "Send, receive, and manage WhatsApp messages and groups through a linked account, and download received media.",
   inputSchema: { type: "object" as const, ...z.toJSONSchema(actionSchema) },
 } as const;

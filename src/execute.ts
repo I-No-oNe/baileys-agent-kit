@@ -1,6 +1,14 @@
 import { type BaileysEventMap, type WASocket, type WAMessageKey } from "@whiskeysockets/baileys";
 import { actionSchema, type AgentAction } from "./actions";
-import { messageParticipants, toInboundMessage, type InboundMessage } from "./inbound";
+import {
+  downloadInboundMedia,
+  findInboundMedia,
+  messageParticipants,
+  RECENT_MEDIA_LIMIT,
+  rememberInboundMedia,
+  toInboundMessage,
+  type InboundMessage,
+} from "./inbound";
 import { toJid } from "./jid";
 import type { RecentAccount } from "./recent-accounts";
 
@@ -117,7 +125,16 @@ export async function executeAction(socket: WASocket, input: unknown, context: {
     case "mark_read":
       await socket.readMessages([key(action)]);
       return { ok: true };
+    case "download_media": {
+      rememberInboundMedia(socket);
+      const message = findInboundMedia(socket, toJid(action.recipient), action.messageId);
+      if (!message) {
+        throw new Error(`No received media message ${action.messageId} from ${action.recipient} is known on this connection. download_media only reaches the last ${RECENT_MEDIA_LIMIT} media messages received while the connection was open.`);
+      }
+      return downloadInboundMedia(socket, message);
+    }
     case "wait_for_message":
+      rememberInboundMedia(socket);
       return waitForMessage(socket, action);
     case "get_profile": {
       const requestedJid = toJid(action.number);

@@ -8,6 +8,7 @@ import makeWASocket, {
 import { createAuthState, type AuthStateFactory } from "./auth";
 import { createBaileysLogger } from "./baileys-logger";
 import { createCoalescedSaver } from "./coalesced-saver";
+import { rememberInboundMedia } from "./inbound";
 import { createRecentAccountsCollector, type RecentAccount } from "./recent-accounts";
 
 const delay = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -50,6 +51,7 @@ export async function connectWhatsApp(options: {
         || syncType === proto.HistorySync.HistorySyncType.ON_DEMAND
         || syncType === proto.HistorySync.HistorySyncType.NON_BLOCKING_DATA,
     });
+    rememberInboundMedia(socket);
     const recentAccounts = shouldPrefetchRecentAccounts ? createRecentAccountsCollector(socket.ev) : undefined;
     socket.ev.on("creds.update", () => {
       credentialSaver.schedule();

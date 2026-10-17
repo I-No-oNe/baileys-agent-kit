@@ -58,6 +58,16 @@ test("accepts a single-number profile lookup", () => {
   assert.equal(actionSchema.safeParse({ action: "get_profile", number: "120363000000@g.us" }).success, false);
 });
 
+test("accepts a media download by message key", () => {
+  assert.deepEqual(actionSchema.parse({ action: "download_media", recipient: "120363000000@g.us", messageId: "3EB0", participant: "+15551234567" }), {
+    action: "download_media",
+    recipient: "120363000000@g.us",
+    messageId: "3EB0",
+    participant: "+15551234567",
+  });
+  assert.equal(actionSchema.safeParse({ action: "download_media", recipient: "+15551234567" }).success, false);
+});
+
 test("accepts bounded recent-account prefetching", () => {
   assert.deepEqual(actionSchema.parse({ action: "list_recent_accounts", limit: 25, prefetchSeconds: 8 }), {
     action: "list_recent_accounts",
